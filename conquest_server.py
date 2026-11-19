@@ -15,9 +15,9 @@ import random
 from http import HTTPStatus
 
 MAX_PLAYERS = 5
-CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid')
+CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden')
 FX_KINDS = ('spray', 'ship', 'shot', 'point', 'med', 'whistle',
-           'webshot', 'wlstart', 'wlgo', 'webt', 'slam')   # ability visuals we relay
+           'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam')   # ability visuals we relay
 TARGET_COUNT = 8
 MAX_HP = 100.0
 TARGET_REVIVE_DELAY = 3.0
