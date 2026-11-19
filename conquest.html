@@ -527,6 +527,7 @@ const WHISTLE_COOLDOWN = 75.0 * CD, DOG_HP = 100, DOG_CHASE_TIME = 8.0, DOG_SMAC
 const SPIDER_STRIKE_DAMAGE = 25, PUNCH_DAMAGE = 20, SWORD_DAMAGE = 30, SWORD_REACH = 3.4;
 const PISTOL_MAG = 8, PISTOL_RELOAD = 1.6, PISTOL_RATE = 0.30, PISTOL_BLOOM_GAIN = 4.0, PISTOL_BLOOM_MAX = 12.5, PISTOL_BLOOM_DECAY = 8.75, PISTOL_RANGE = 150;
 const WEB_COOLDOWN = 17.0 * CD, WEB_SPEED = 48, WEB_RANGE = 70;
+const STRAW_RANGE = 48.4, STRAW_SPEED = 55, STRAW_DAMAGE = 16.8, STRAW_PUSH = 6, STRAW_GAP = 0.06, STRAW_COOLDOWN = 1.0 / 1.5, STRAW_GRAV = 22;   // Kool-Aid Man's pink straw: 3-shot burst, flies 2x the shockwave's range (48.4) and then drops
 const SLAM_DAMAGE = 90, SLAM_RANGE = SHIP_RANGE * 1.1 / 2, SLAM_SPEED = 22, SLAM_HEIGHT = 0.8, SLAM_PUSH = 18, SLAM_COOLDOWN = 15.0 * CD, HEADBUTT_DAMAGE = 25;   // Kool-Aid Man: shockwave = 90 dmg (leaves a full-health target on 1/10), 1.1x its range, knee-high so you can jump it
 const SKEL_MOVE_MULT = 1.7, SKEL_ATTACK_MULT = 1.875, SKEL_JUMP_MULT = 1.3;
 const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75, SPRAY_SPREAD = 0.13;
@@ -617,6 +618,36 @@ function buildWickMesh(parent, sy = 1.0) {
   part(w, 'cube', [0, sy - 0.68, 0], [0.7, 0.36, 0.42], WICK_SUIT);
   return w;
 }
+const WARD_ARMOR = rgb(26, 26, 33), WARD_STEEL = rgb(74, 76, 90), WARD_RED = rgb(138, 18, 38), WARD_GLOW = rgb(255, 56, 56);
+const WARD_SCALE = 0.82 * 1.15;
+function buildWardenMesh(parent, sy = 1.0) {         // Darth Vader: a black-armoured dark lord (all rounded shapes, no cape, no fin)
+  const w = G(parent, [0, -0.55 * (1 - WARD_SCALE), 0]);   // shrinks him but keeps his feet on the ground
+  w.scale.setScalar(WARD_SCALE);
+  const MOUTH_GREY = rgb(125, 127, 138), COWL = rgb(44, 46, 58);
+  {                                                                                                     // black cape: clasped at the neck, fanning out into a wide, folded, ragged-hem sweep
+    const CAPE = [rgb(9, 9, 12), rgb(19, 19, 24), rgb(30, 30, 38)], N = 11, hang = G(w, [0, sy + 0.36, -0.17]);
+    part(w, 'sphere', [0, sy + 0.36, -0.1], [0.56, 0.2, 0.34], CAPE[1]);                                // collar where the cape joins his neck
+    for (let i = 0; i < N; i++) {
+      const f = (i - (N - 1) / 2) / ((N - 1) / 2), L = 1.5 + 0.18 * Math.abs(f) + (i % 2 ? 0.08 : -0.04);
+      const strip = G(hang, [f * 0.27, 0, (i % 2 ? 0.02 : -0.02) - 0.03 * Math.abs(f)]);              // alternating depth makes folds
+      strip.rz = -17 * f; strip.rx = 11 + (i % 3 === 1 ? 5 : i % 3 === 2 ? -3 : 0);
+      part(strip, 'cube', [0, -L / 2, 0], [0.22, L, 0.05], CAPE[(i + (i > 4 ? 1 : 0)) % 3]);
+    }
+  }
+  part(w, 'sphere', [0, sy + 0.5, 0], [0.64, 0.5, 0.64], WARD_ARMOR);                                  // helmet: rounder lower half...
+  part(w, 'sphere', [0, sy + 0.66, 0], [0.62, 0.75, 0.62], WARD_ARMOR);                                // ...rising into a dome
+  part(w, 'sphere', [0, sy + 0.68, -0.02], [0.7, 0.78, 0.6], COWL);                                    // lighter grey dome: sits over the whole head (not just behind it), stops short of the face plate
+  part(w, 'cube', [0, sy + 0.6, 0.29], [0.4, 0.36, 0.06], WARD_STEEL);                                 // face plate
+  for (const sx of [-1, 1]) part(w, 'cube', [sx * 0.12, sy + 0.7, 0.33], [0.15, 0.06, 0.04], BLACK);   // black eyes
+  for (let i = 0; i < 8; i++) part(w, 'cube', [-0.14 + i * 0.04, sy + 0.54, 0.33], [0.04, 0.09, 0.04], i % 2 ? BLACK : MOUTH_GREY);   // mouth: 4 grey + 4 black bars, alternating
+part(w, 'sphere', [0, sy - 0.12, 0], [0.78, 1.15, 0.5], WARD_ARMOR);                                 // torso: a tall, slim oval
+  part(w, 'sphere', [0, sy - 0.02, 0.2], [0.5, 0.5, 0.2], WARD_STEEL);                                 // chest plate
+  part(w, 'sphere', [0, sy - 0.02, 0.3], 0.14, rgb(48, 48, 54));                                       // chest gem
+  for (const sx of [-1, 1]) part(w, 'sphere', [sx * 0.45, sy + 0.3, 0], 0.4, WARD_STEEL);              // pauldrons
+  part(w, 'sphere', [0, sy - 0.6, 0], [0.7, 0.14, 0.45], WARD_STEEL);                                  // belt
+  part(w, 'sphere', [0, sy - 0.7, 0], [0.62, 0.4, 0.4], WARD_ARMOR);                                   // hips
+  return w;
+}
 function buildSpiderMesh(parent, sy = 1.0) {
   const sp = G(parent);
   part(sp, 'cube', [0, sy + 0.36, 0], [0.58, 0.62, 0.58], SPIDER_RED);
@@ -657,6 +688,18 @@ function buildPistol(parent) {
   const muzzle = G(pivot, [0, 0.07, 0.45]);
   pivot.visible = false;
   return { root: pivot, slide, mag, muzzle };
+}
+function buildSaber(parent) {                      // Vader's lightsaber: silver hilt, glowing red blade (materials are unlit, so it glows on its own)
+  const s = G(parent, [0, -0.68, 0]);
+  part(s, 'cube', [0, 0, 0.02], [0.07, 0.07, 0.34], rgb(150, 152, 165));
+  part(s, 'cube', [0, 0, -0.17], [0.09, 0.09, 0.05], BLACK);
+  part(s, 'cube', [0, 0, 0.0], [0.085, 0.085, 0.05], BLACK);
+  part(s, 'cube', [0, 0, 0.22], [0.1, 0.1, 0.06], rgb(80, 82, 95));
+  part(s, 'cube', [0, 0, 1.3], [0.05, 0.05, 2.15], rgb(255, 235, 235));            // hot white core
+  const glow = part(s, 'cube', [0, 0, 1.3], [0.11, 0.11, 2.25], WARD_GLOW);           // red glow around it
+  glow.material = glassMat(WARD_GLOW, 0.55);
+  part(s, 'sphere', [0, 0, 2.42], 0.07, WARD_GLOW);
+  return s;
 }
 function buildSword(parent) {
   const s = G(parent, [0, -0.68, 0]);
@@ -772,10 +815,11 @@ function buildRig(parent, kind) {
   if (kind === 'jack') { rig.model_root = buildJackMesh(parent, sy); sleeve = JACK_COAT; legCol = JACK_PANTS; rig.skin = JACK_SKIN; }
   else if (kind === 'wick') { rig.model_root = buildWickMesh(parent, sy); sleeve = legCol = WICK_SUIT; rig.skin = WICK_SKIN; }
   else if (kind === 'spiderman') { rig.model_root = buildSpiderMesh(parent, sy); sleeve = SPIDER_RED; legCol = SPIDER_BLUE; rig.skin = SPIDER_RED; }
+  else if (kind === 'warden') { rig.model_root = buildWardenMesh(parent, sy); sleeve = legCol = WARD_ARMOR; rig.skin = WARD_STEEL; }
   else if (kind === 'koolaid') { rig.model_root = buildKoolMesh(parent, sy); sleeve = legCol = KOOL_LIMB; rig.skin = KOOL_GLOVE; }
   else { rig.model_root = buildSpongeMesh(parent, sy); sleeve = legCol = rig.skin = LIMB_COLOR; }
   const root = rig.model_root;
-  const armX = kind === 'koolaid' ? 0.92 : kind === 'spiderman' ? 0.47 : (kind === 'jack' || kind === 'wick') ? 0.46 : 0.65;
+  const armX = kind === 'koolaid' ? 0.92 : kind === 'spiderman' ? 0.47 : (kind === 'jack' || kind === 'wick') ? 0.46 : kind === 'warden' ? 0.5 : 0.65;
   rig.left_arm = G(root, [-armX, sy + 0.2, 0]);
   rig.right_arm = G(root, [armX, sy + 0.2, 0]);
   if (kind === 'wick' || kind === 'spiderman') {
@@ -796,13 +840,18 @@ function buildRig(parent, kind) {
     part(rig.right_arm, 'cube', [0, -0.3, 0], [0.15, 0.7, 0.15], sleeve);
   }
   if (kind === 'koolaid') for (const a of [rig.left_arm, rig.right_arm]) { part(a, 'sphere', [0, -0.72, 0], 0.34, rig.skin); part(a, 'sphere', [0, 0.02, 0], 0.4, rig.skin); }   // hand + a round shoulder joint that sits against his side
-  const [lx, lw] = kind === 'spiderman' ? [0.19, 0.16] : kind === 'koolaid' ? [0.38, 0.2] : [0.25, 0.18];
+  const [lx, lw] = kind === 'spiderman' ? [0.19, 0.16] : kind === 'koolaid' ? [0.38, 0.2] : kind === 'warden' ? [0.2, 0.14] : [0.25, 0.18];
   const legLen = kind === 'spongebob' ? SPONGE_LEG_LEN : kind === 'koolaid' ? 0.9 : LEG_LEN, legTop = sy - 0.85 + (kind === 'koolaid' ? 0.2 : 0);
   rig.left_leg = G(root, [-lx, legTop, 0]);
   part(rig.left_leg, 'cube', [0, -legLen / 2, 0], [lw, legLen, lw], legCol);
   rig.right_leg = G(root, [lx, legTop, 0]);
   part(rig.right_leg, 'cube', [0, -legLen / 2, 0], [lw, legLen, lw], legCol);
   if (kind === 'wick') for (const l of [rig.left_leg, rig.right_leg]) part(l, 'cube', [0, -0.58, 0.04], [0.22, 0.24, 0.3], BLACK);
+  if (kind === 'warden') {
+    for (const a of [rig.left_arm, rig.right_arm]) part(a, 'sphere', [0, -0.68, 0], 0.17, WARD_STEEL);
+    for (const l of [rig.left_leg, rig.right_leg]) part(l, 'cube', [0, -0.58, 0.04], [0.2, 0.24, 0.3], WARD_STEEL);
+    rig.saber = buildSaber(rig.right_arm); rig.saber.visible = false;   // only drawn while he has ability 2 selected
+  }
   if (kind === 'spiderman') for (const l of [rig.left_leg, rig.right_leg]) part(l, 'cube', [0, -0.58, 0.04], [0.19, 0.24, 0.28], SPIDER_RED);
   if (kind === 'koolaid') for (const l of [rig.left_leg, rig.right_leg]) { part(l, 'cube', [0, -0.78, 0.08], [0.3, 0.22, 0.46], KOOL_RED); }
   if (kind === 'jack') {
@@ -823,6 +872,48 @@ function punchPose(t) {
   if (t < 0.10) { const u = t / 0.10; return [35 * u, 1.0, -0.1 * u]; }
   if (t < 0.22) { const u = (t - 0.10) / 0.12; return [35 + (-90 - 35) * u, 1.0 + u, -0.1 + 0.5 * u]; }
   if (t < 0.42) { const u = (t - 0.22) / 0.20; return [-90 * (1 - u), 2.0 - u, 0.4 * (1 - u)]; }
+  return null;
+}
+function buildStraw(parent, sy) {                 // pink straw held in both hands in front of his mouth (stretchy arms, like SpongeBob's gun arms)
+  const PINK = rgb(255, 120, 190), WHITE = rgb(255, 245, 250);
+  const root = G(parent, [0, sy - 0.1, 1.0]);                         // pivot at the mouth; it tilts with where he aims
+  part(root, 'cube', [0, 0, 0.85], [0.08, 0.08, 1.9], PINK);
+  for (const z of [0.35, 0.8, 1.25, 1.7]) part(root, 'cube', [0, 0, z], [0.092, 0.092, 0.12], WHITE);     // stripes
+  const muzzle = G(root, [0, 0, 1.8]);
+  const hands = [], arms = [], joints = [];
+  for (const sx of [-1, 1]) {
+    const hand = part(root, 'sphere', [sx * 0.14, 0, 0.3], 0.34, KOOL_GLOVE); hands.push(hand);
+    const pivot = G(parent); part(pivot, 'cube', [0, 0, 0.5], [0.17, 0.17, 1], KOOL_LIMB); arms.push(pivot);
+    joints.push(part(parent, 'sphere', [sx * 0.92, sy + 0.2, 0], 0.4, KOOL_GLOVE));
+  }
+  const st = { root, muzzle, hands, arms, joints, sy, handLocal: [-1, 1].map(sx => new V3(sx * 0.14, 0, 0.3)) };
+  strawShow(st, false, []);
+  return st;
+}
+function strawShow(st, on, realArms) {
+  st.root.visible = on; st.arms.forEach(a => a.visible = on); st.joints.forEach(j => j.visible = on);
+  for (const a of realArms) a.visible = !on;
+}
+function poseStraw(st, pitchDeg) {                  // straw follows the aim; the two arms stretch from his shoulders to his hands on it
+  const pitch = clamp(pitchDeg, -50, 40) * 0.6;
+  st.root.rx = pitch;
+  const c = Math.cos(pitch * D2R), sn = Math.sin(pitch * D2R);
+  [-1, 1].forEach((sx, i) => {
+    const h = st.handLocal[i];
+    const hand = new V3(st.root.position.x + h.x, st.root.position.y + h.y * c - h.z * sn, st.root.position.z + h.y * sn + h.z * c);
+    const v = hand.sub(new V3(sx * 0.92, st.sy + 0.2, 0)), ln = v.length(), pv = st.arms[i];
+    pv.position.set(sx * 0.92, st.sy + 0.2, 0);
+    pv.ry = Math.atan2(v.x, v.z) / D2R; pv.rx = -Math.atan2(v.y, Math.hypot(v.x, v.z)) / D2R; pv.scale.z = ln;
+  });
+}
+const KICK_DAMAGE = 30, KICK_PUSH = 24;
+const SABER_DAMAGE = 40, SABER_COOLDOWN = 0.6, SABER_BOOST = 1.25, SABER_RANGE = 1.4;   // Vader's lightsaber: 4/10 of a 100 hp bar, one swing per 0.6 s, +25% walk/run speed and +25% jump height while he holds it, 1.4x the kick's reach
+function kickPose(t) {            // Spartan kick: [kicking leg (deg, - = forward), lean (deg, - = back), lunge, arm swing]
+  const e = u => u * u * (3 - 2 * u);
+  if (t < 0.20) { const u = e(t / 0.20); return [-45 * u, -6 * u, -0.1 * u, 20 * u]; }
+  if (t < 0.30) { const u = (t - 0.20) / 0.10; return [-45 - 50 * u, -6 - 14 * u, -0.1 + 1.0 * u, 20 + 10 * u]; }
+  if (t < 0.42) return [-95, -20, 0.9, 30];
+  if (t < 0.72) { const u = e((t - 0.42) / 0.30); return [-95 * (1 - u), -20 * (1 - u), 0.9 * (1 - u), 30 * (1 - u)]; }
   return null;
 }
 function headbuttPose(t) {        // [lean (deg, + = forward), forward shove, arm swing]: rear back, then SLAM the top of the pitcher forward
@@ -872,6 +963,24 @@ function animateSponge(o, moving, dt) {
     o.left_leg.rx = lerp(o.left_leg.rx, 0, k); o.right_leg.rx = lerp(o.right_leg.rx, 0, k);
     o.left_arm.rx = lerp(o.left_arm.rx, 0, k); o.right_arm.rx = lerp(o.right_arm.rx, 0, k);
     o.model_root.position.y = lerp(o.model_root.position.y, 0, Math.min(1, 10 * dt));
+  }
+}
+function animateWarden(o, moving, dt) {          // like the default walk, but the right arm keeps the lightsaber raised
+  const k = Math.min(1, 12 * dt), mr = o.model_root;
+  if (o.punch_t === null) { mr.ry = lerp(wrap(mr.ry), 0, Math.min(1, 15 * dt)); mr.position.z = lerp(mr.position.z, 0, Math.min(1, 15 * dt)); }   // settle after a swing
+  if (moving && o.grounded) {
+    o.walk_t += dt * (sprinting() ? 18 : 12);
+    const sw = Math.sin(o.walk_t);
+    o.left_leg.rx = sw * 30; o.right_leg.rx = -sw * 30; o.left_arm.rx = -sw * 25;
+    o.right_arm.rx = JACK_GUARD + Math.sin(o.walk_t * 2) * 4;
+    mr.position.y = Math.abs(Math.cos(o.walk_t)) * 0.1;
+  } else if (!o.grounded) {
+    o.left_leg.rx = 20; o.right_leg.rx = -20; o.left_arm.rx = -40; o.right_arm.rx = JACK_GUARD;
+    mr.position.y = lerp(mr.position.y, 0, Math.min(1, 10 * dt));
+  } else {
+    o.left_leg.rx = lerp(o.left_leg.rx, 0, k); o.right_leg.rx = lerp(o.right_leg.rx, 0, k);
+    o.left_arm.rx = lerp(o.left_arm.rx, 0, k); o.right_arm.rx = lerp(o.right_arm.rx, JACK_GUARD, k);
+    mr.position.y = lerp(mr.position.y, 0, Math.min(1, 10 * dt));
   }
 }
 function animateKool(o, moving, dt) {            // roly-poly waddle
@@ -1155,6 +1264,35 @@ class Tracer {      // thin line between two points that disappears after a mome
   }
   update(dt) { this.t += dt; return this.t < this.life; }
   dispose() { world.remove(this.m); this.m.material.dispose(); }
+}
+class StrawShot {         // a red Kool-Aid pellet: flies straight until it has covered STRAW_RANGE, then drops
+  constructor(pos, vel, owner = null, visual = false) {
+    this.owner = owner; this.visual = visual;
+    this.m = new THREE.Mesh(GEO_S, getMat(rgb(220, 30, 45))); this.m.position.copy(pos); this.m.scale.setScalar(0.24); world.add(this.m);
+    this.vel = vel.clone(); this.dist = 0; this.t = 0; effects.add(this);
+  }
+  update(dt) {
+    this.t += dt;
+    const p = this.m.position, n = 3, h = dt / n;
+    for (let i = 0; i < n; i++) {
+      const before = p.clone();
+      if (this.dist >= STRAW_RANGE) { this.vel.y -= STRAW_GRAV * h; this.vel.x *= 1 - 1.2 * h; this.vel.z *= 1 - 1.2 * h; }
+      else this.dist += this.vel.length() * h;
+      p.addScaledVector(this.vel, h);
+      if (!this.visual) for (const v of allVictims()) {
+        if (v === this.owner || !v.alive) continue;
+        if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 0.95) {
+          if (NET) sendPunch(deliverHits([[v, STRAW_DAMAGE]], before, STRAW_PUSH));
+          else if (v instanceof Target) v.takeDamage(STRAW_DAMAGE, before, STRAW_PUSH);
+          new ExplosionFx(p.clone(), 0.5, rgb(230, 40, 55), false);
+          return false;
+        }
+      }
+      if (p.y <= height(p.x, p.z) + 0.05) { new ExplosionFx(p.clone(), 0.35, rgb(235, 60, 70), false); return false; }
+    }
+    return this.t < 6 && p.y > -30;
+  }
+  dispose() { world.remove(this.m); }
 }
 class WebShot {
   constructor(pos, vel, owner = null, visual = false) {
@@ -1702,12 +1840,12 @@ function blowWhistle(o) {
 }
 
 /* ---- melee ---- */
-function doPunchHit(o, dmgOverride) {
+function doPunchHit(o, dmgOverride, push) {
   const f = new V3(Math.sin(o.yaw * D2R), 0, Math.cos(o.yaw * D2R));
   const hitPos = new V3(o.x, o.y + 1.2, o.z).addScaledVector(f, 1.6);
-  const jack = o.kind === 'jack', kool = o.kind === 'koolaid', reach = jack ? SWORD_REACH : kool ? 3.4 : o.kind === 'spiderman' ? 2.9 : 2.8, cone = jack ? 0.2 : 0.4;
+  const jack = o.kind === 'jack', kool = o.kind === 'koolaid', reach = jack ? SWORD_REACH : kool ? 3.4 : o.kind === 'warden' ? (o.weapon === 'saber' ? 3.6 * SABER_RANGE : 3.6) : o.kind === 'spiderman' ? 2.9 : 2.8, cone = jack ? 0.2 : 0.4;
   const dmg = dmgOverride ?? (jack ? SWORD_DAMAGE : PUNCH_DAMAGE);
-  const fx = kool ? rgb(255, 235, 90) : jack ? rgb(225, 235, 255) : o.kind === 'wick' ? rgb(235, 235, 240) : o.kind === 'spiderman' ? rgb(255, 110, 100) : rgb(255, 230, 60);
+  const fx = (o.kind === 'warden' && o.weapon === 'saber') ? rgb(255, 70, 60) : kool ? rgb(255, 235, 90) : jack ? rgb(225, 235, 255) : o.kind === 'wick' ? rgb(235, 235, 240) : o.kind === 'spiderman' ? rgb(255, 110, 100) : rgb(255, 230, 60);
   const origin = new V3(o.x, o.y, o.z), hits = [];
   for (const t of [...remotes.values(), ...targets]) {
     if (!t.alive) continue;
@@ -1717,7 +1855,7 @@ function doPunchHit(o, dmgOverride) {
       new ExplosionFx(hitPos, 0.8, fx, false);
     }
   }
-  if (hits.length) sendPunch(deliverHits(hits, origin));
+  if (hits.length) sendPunch(deliverHits(hits, origin, push));
 }
 
 /* ---- Spider-Man's web launch flight ---- */
@@ -1758,9 +1896,9 @@ function updateLaunch(o, dt) {             // thrown forward: covers 2/3 of the 
 const WEAPONS = {
   spongebob: ['fist', 'gun', 'bubbler'], jack: ['sword', 'compass', 'medallion'],
   wick: ['fist', 'pistol', 'whistle'], spiderman: ['fist', 'webshooter', 'weblaunch'],
-  koolaid: ['headbutt', 'slam'],
+  koolaid: ['headbutt', 'slam', 'straw'], warden: ['kick', 'saber'],
 };
-const WEAPON_NAMES = { gun: 'Burger Gun', bubbler: 'Bubble Launcher', sword: 'Cutlass', compass: 'Compass', medallion: 'Skeleton Medallion', whistle: 'Whistle', fist: 'Fists', pistol: 'Pistol', none: 'No abilities yet', headbutt: 'Headbutt', slam: 'Butt Slam' };
+const WEAPON_NAMES = { gun: 'Burger Gun', bubbler: 'Bubble Launcher', sword: 'Cutlass', compass: 'Compass', medallion: 'Skeleton Medallion', whistle: 'Whistle', fist: 'Fists', pistol: 'Pistol', none: 'No abilities yet', kick: 'Spartan Kick', saber: 'Lightsaber', headbutt: 'Headbutt', slam: 'Butt Slam', straw: 'Pink Straw' };
 const hudWeapon = document.getElementById('weapon'), hudMsg = document.getElementById('msg'), crossEl = document.getElementById('cross');
 let msgTimer = 0;
 const setWeaponText = t => { if (hudWeapon.textContent !== t) hudWeapon.textContent = t; };
@@ -1801,7 +1939,10 @@ function makePlayer(kind) {
     o.nozzles = [G(o.left_fore, [0, -0.42, 0]), G(o.right_fore, [0, -0.42, 0])];
     Object.assign(o, { web_cd: 0, web_recoil: 0, wl: null, wl_cd: 0 });
   } else if (kind === 'koolaid') {
-    Object.assign(o, { slam: null, slam_cd: 0 });
+    o.straw = buildStraw(o.model_root, sy);
+    Object.assign(o, { slam: null, slam_cd: 0, straw_cd: 0, burst: null });
+  } else if (kind === 'warden') {
+    Object.assign(o, { saber_cd: 0 });
   } else if (kind === 'jack') {
     Object.assign(o, { ship_cd: 0, point_t: null, med_cd: 0, med_t: null, skeleton: false, smoke_for: 0, smoke_t: 0, med_smoking: false });
   }
@@ -1825,13 +1966,14 @@ function setWeapon(o, w, force = false) {
   o.weapon = w; o.punch_t = null; o.hud_label = '';
   if (o.kind === 'jack') { o.rig.sword.visible = w === 'sword'; o.rig.compass.visible = w === 'compass'; o.rig.medallion.visible = w === 'medallion'; }
   else if (o.kind === 'wick') { o.pistol.root.visible = w === 'pistol'; o.whistle_prop.visible = w === 'whistle'; }
+  else if (o.kind === 'warden') o.rig.saber.visible = w === 'saber';
   else if (o.kind === 'spongebob') {
     const g = w === 'gun', b = w === 'bubbler';
     o.gun.visible = g; o.bubbler.visible = b;
     o.gun.burger_viz.visible = o.gun_loaded;
     o.hold_arms.forEach(a => a.visible = g || b);
     o.left_arm.visible = o.right_arm.visible = !(g || b);
-  }
+  } else if (o.kind === 'koolaid') strawShow(o.straw, w === 'straw', [o.left_arm, o.right_arm]);
   let name = WEAPON_NAMES[w] ?? 'Fists';
   if (o.kind === 'wick' && w === 'fist') name = 'Jab';
   if (o.kind === 'spiderman') name = { fist: 'Strike', webshooter: 'Web Shooter', weblaunch: 'Web Launch' }[w];
@@ -1876,9 +2018,11 @@ function useWeapon(o) {
   if (o.point_t !== null && o.point_t !== undefined) return;
   if (medFlipping(o)) return;
   const w = o.weapon;
-  if (w === 'headbutt') { if (o.punch_t === null && !o.slam) { o.punch_t = 0; o.punch_hit = false; } }
+  if (w === 'headbutt' || w === 'kick') { if (o.punch_t === null && !o.slam) { o.punch_t = 0; o.punch_hit = false; } }
   else if (w === 'slam') { if (o.grounded && !o.slam && o.slam_cd <= 0 && o.punch_t === null) { o.vy = 10.5; o.grounded = false; o.slam = { stage: 'air', t: 0 }; o.slam_cd = SLAM_COOLDOWN; } }
+  else if (w === 'straw') { if (o.straw_cd <= 0 && !o.burst && !o.slam && o.punch_t === null) { o.burst = { left: 3, t: 0 }; o.straw_cd = STRAW_COOLDOWN; } }
   else if (w === 'fist' || w === 'sword') { if (o.punch_t === null) { o.punch_t = 0; o.punch_hit = false; } }
+  else if (w === 'saber') { if (o.punch_t === null && o.saber_cd <= 0) { o.punch_t = 0; o.punch_hit = false; o.saber_cd = SABER_COOLDOWN; } }   // cooldown starts the moment he swings
   else if (w === 'webshooter') fireWeb(o);
   else if (w === 'weblaunch') startWebLaunch(o);
   else if (w === 'compass') { if (o.ship_cd <= 0 && o.punch_t === null) { o.point_t = 0; o.ship_fired = false; o.ship_cd = SHIP_COOLDOWN; if (NET) NET.send({ t: 'fx', k: 'point' }); } }
@@ -1889,6 +2033,13 @@ function useWeapon(o) {
 }
 const aimPoint = dist => camAuthorPos.clone().addScaledVector(camFwd, dist);
 
+function fireStraw(o) {
+  const start = authorPos(o.straw.muzzle);
+  const vel = aimPoint(45).sub(start).normalize().multiplyScalar(STRAW_SPEED);
+  new StrawShot(start, vel, o);
+  new ExplosionFx(start, 0.3, rgb(235, 60, 70), false);
+  if (NET) NET.send({ t: 'fx', k: 'straw', p: [r2(start.x), r2(start.y), r2(start.z)], v: [r2(vel.x), r2(vel.y), r2(vel.z)] });
+}
 function fireBurger(o) {
   o.gun_loaded = false; o.gun.burger_viz.visible = false; o.recoil = 0.25;
   setTimeout(() => { o.gun_loaded = true; if (o.weapon === 'gun') o.gun.burger_viz.visible = true; }, 1100);
@@ -2008,6 +2159,26 @@ function updateWeapons(o, dt) {
       if (!p) o.punch_t = null;
       else { o.right_arm.rx = p[0]; o.left_arm.rx = -p[0] * 0.2; mr.ry = (p[0] - JACK_GUARD) * 0.1; mr.position.z = p[1];
         if (t >= 0.2 && !o.punch_hit) { o.punch_hit = true; doPunchHit(o); } }
+    } else if (k === 'warden' && o.weapon === 'saber') {   // lightsaber: the same overhead chop as the cutlass, 40 damage, 1.4x reach
+      const p = swordPose(t);
+      if (!p) o.punch_t = null;
+      else { o.right_arm.rx = p[0]; o.left_arm.rx = -p[0] * 0.2; mr.ry = (p[0] - JACK_GUARD) * 0.1; mr.position.z = p[1];
+        if (t >= 0.2 && !o.punch_hit) {
+          o.punch_hit = true; doPunchHit(o, SABER_DAMAGE);
+          const f = new V3(Math.sin(o.yaw * D2R), 0, Math.cos(o.yaw * D2R));
+          new ExplosionFx(new V3(o.x, o.y + 1.2, o.z).addScaledVector(f, 3.4), 0.9, rgb(255, 70, 60), false);
+        } }
+    } else if (k === 'warden') {
+      const p = kickPose(t);
+      if (!p) o.punch_t = null;
+      else {
+        mr.rx = p[1]; mr.position.z = p[2]; o.right_leg.rx = p[0]; o.left_leg.rx = -p[1]; o.left_arm.rx = p[3]; o.right_arm.rx = p[3];
+        if (t >= 0.26 && !o.punch_hit) {
+          o.punch_hit = true; doPunchHit(o, KICK_DAMAGE, KICK_PUSH);
+          const f = new V3(Math.sin(o.yaw * D2R), 0, Math.cos(o.yaw * D2R));
+          new ExplosionFx(new V3(o.x, o.y + 1.0, o.z).addScaledVector(f, 2.2), 0.9, rgb(255, 200, 120), false);
+        }
+      }
     } else if (k === 'koolaid') {
       const p = headbuttPose(t);
       if (!p) o.punch_t = null;
@@ -2120,6 +2291,14 @@ function updateWeapons(o, dt) {
     else setWeaponText('Strike');
   }
 
+  if (k === 'warden') {
+    if (o.saber_cd > 0) o.saber_cd = Math.max(0, o.saber_cd - dt);
+    if (o.weapon === 'saber') {
+      if (mouseHeld && o.saber_cd <= 0) useWeapon(o);                   // hold click = a swing every 0.6 s
+      setWeaponText('Lightsaber   ' + (o.saber_cd > 0 ? o.saber_cd.toFixed(1) + 's' : 'Ready'));
+    }
+  }
+
   if (k === 'koolaid') {
     if (o.slam_cd > 0) o.slam_cd = Math.max(0, o.slam_cd - dt);
     const sl = o.slam;
@@ -2149,7 +2328,17 @@ function updateWeapons(o, dt) {
         } else o.slam = null;
       }
     }
+    if (o.straw_cd > 0) o.straw_cd = Math.max(0, o.straw_cd - dt);
+    if (o.burst) {                                                       // 3-round burst, no reload
+      if (o.weapon !== 'straw' || o.slam) o.burst = null;
+      else {
+        o.burst.t -= dt;
+        if (o.burst.t <= 0) { fireStraw(o); o.burst.left--; o.burst.t = STRAW_GAP; if (o.burst.left <= 0) o.burst = null; }
+      }
+    }
+    if (o.weapon === 'straw') { if (mouseHeld && !o.burst && o.straw_cd <= 0) useWeapon(o); poseStraw(o.straw, o.pitch); }   // hold click = burst after burst
     if (o.weapon === 'slam') setWeaponText('Butt Slam   ' + (o.slam_cd <= 0 ? 'Ready' : o.slam_cd.toFixed(1) + 's'));
+    else if (o.weapon === 'straw') setWeaponText('Pink Straw   ' + (o.straw_cd <= 0 ? 'Ready (3-shot burst)' : o.straw_cd.toFixed(1) + 's'));
     else setWeaponText('Headbutt');
   }
 
@@ -2224,6 +2413,7 @@ function updatePlayer(o, dt) {
     dx /= len; dz /= len;
     let speed = sprinting() ? Player.RUN : Player.WALK;
     if (o.skeleton) speed *= SKEL_MOVE_MULT;
+    if (o.kind === 'warden' && o.weapon === 'saber') speed *= SABER_BOOST;
     o.x = clamp(o.x + dx * speed * dt, -285, 285);
     o.z = clamp(o.z + dz * speed * dt, -285, 285);
   }
@@ -2261,6 +2451,7 @@ function updatePlayer(o, dt) {
   else if (o.kind === 'wick') animateWick(o, moving, dt);
   else if (o.kind === 'spiderman') spiderAnim(o, moving && o.grounded, sprinting(), !o.grounded, dt);
   else if (o.kind === 'koolaid') animateKool(o, moving, dt);
+  else if (o.kind === 'warden' && o.weapon === 'saber') animateWarden(o, moving, dt);
   else animateSponge(o, moving, dt);
   updateWeapons(o, dt);
   if (o.dog) o.dog.update(dt);
@@ -2310,10 +2501,12 @@ addEventListener('keydown', e => {
   }
   if (!me) return;
   if (e.code === 'Space' && me.grounded && !me.wl && !me.slam && !(me.web_t > 0)) {
-    me.vy = Player.JUMP * (me.skeleton ? Math.sqrt(SKEL_JUMP_MULT) : 1); me.grounded = false;
+    me.vy = Player.JUMP * (me.skeleton ? Math.sqrt(SKEL_JUMP_MULT) : 1) * (me.kind === 'warden' && me.weapon === 'saber' ? Math.sqrt(SABER_BOOST) : 1);   // jump height goes with vy squared, so sqrt(1.25) = 25% higher me.grounded = false;
   } else if (e.code === 'KeyR' && me.kind === 'wick' && me.weapon === 'pistol') {
     if (me.reload_t === null && me.ammo < PISTOL_MAG) me.reload_t = 0;
-  } else if (e.code.startsWith('Digit')) {
+  } else if (e.code === 'KeyQ' && !e.repeat) cycleWeapon(me, -1);
+  else if (e.code === 'KeyE' && !e.repeat) cycleWeapon(me, 1);
+  else if (e.code.startsWith('Digit')) {
     const i = parseInt(e.code.slice(5), 10) - 1;
     if (i >= 0 && i < me.weapons.length) setWeapon(me, me.weapons[i]);
   }
@@ -2349,7 +2542,8 @@ const CHAR_INFO = {
   jack: { name: 'Jack Sparrow', short: 'SPARROW', initials: 'JS', tag: 'CAPTAIN', gear: ['Cutlass', 'Ship Compass', 'Skeleton Medallion'], accent: '#e15046' },
   wick: { name: 'John Wick', short: 'WICK', initials: 'JW', tag: 'BABA YAGA', gear: ['Jab', 'Pistol (8 rounds)', 'Whistle + Dog'], accent: '#a0afcd' },
   spiderman: { name: 'Spider-Man', short: 'SPIDER-MAN', initials: 'SM', tag: 'WEB-SLINGER', gear: ['Strike', 'Electric Web Shooter', 'Web Launch'], accent: '#5078eb' },
-  koolaid: { name: 'Kool-Aid Man', short: 'KOOL-AID', initials: 'KA', tag: 'OH YEAH!', gear: ['Headbutt', 'Butt Slam'], accent: '#e8333f' },
+  koolaid: { name: 'Kool-Aid Man', short: 'KOOL-AID', initials: 'KA', tag: 'OH YEAH!', gear: ['Headbutt', 'Butt Slam', 'Pink Straw'], accent: '#e8333f' },
+  warden: { name: 'Darth Vader', short: 'VADER', initials: 'DV', tag: 'DARK LORD', gear: ['Spartan Kick', 'Lightsaber'], accent: '#c0243c' },
 };
 let selected = 'spongebob';
 const menuGroup = G(world);
@@ -2520,6 +2714,8 @@ class RemotePlayer {
       this.hold_arms = buildHoldArms(this.model_root, sy, rig.skin);
     } else if (kind === 'spiderman') {
       this.nozzles = [G(this.left_fore, [0, -0.42, 0]), G(this.right_fore, [0, -0.42, 0])];
+    } else if (kind === 'koolaid') {
+      this.straw = buildStraw(this.model_root, sy);
     } else if (kind === 'wick') {
       this.pistol = buildPistol(this.right_fore);
       this.whistle_prop = G(this.right_fore); this.whistle_prop.visible = false;
@@ -2545,10 +2741,14 @@ class RemotePlayer {
       this.hold_arms.forEach(a => a.visible = g || b);
       this.left_arm.visible = this.right_arm.visible = !(g || b);
       this.gun_on = g || b;
+    } else if (this.kind === 'koolaid') {
+      strawShow(this.straw, wp === 'straw', [this.left_arm, this.right_arm]);
     } else if (this.kind === 'jack') {
       this.rig.sword.visible = wp === null || wp === 'sword';
       this.rig.compass.visible = wp === 'compass';
       this.rig.medallion.visible = wp === 'medallion';
+    } else if (this.kind === 'warden') {
+      this.rig.saber.visible = wp === 'saber';
     } else if (this.kind === 'wick') {
       this.pistol.root.visible = wp === 'pistol';
       this.whistle_prop.visible = wp === 'whistle';
@@ -2582,7 +2782,7 @@ class RemotePlayer {
   }
   update(dt) {
     if (dt <= 0) return;
-    const jack = this.kind === 'jack', wick = this.kind === 'wick', spidey = this.kind === 'spiderman', kool = this.kind === 'koolaid';
+    const jack = this.kind === 'jack', wick = this.kind === 'wick', spidey = this.kind === 'spiderman', kool = this.kind === 'koolaid', ward = this.kind === 'warden';
     const k = Math.min(1, 15 * dt), mr = this.model_root;
     this.x = lerp(this.x, this.goal.x, k); this.y = lerp(this.y, this.goal.y, k); this.z = lerp(this.z, this.goal.z, k);
     this.root.position.set(this.x, this.y, this.z);
@@ -2595,8 +2795,8 @@ class RemotePlayer {
     let pose = null, punching = false;
     if (this.punch_t >= 0 && !this.gun_on) {
       this.punch_t += dt;
-      pose = jack ? swordPose(this.punch_t) : wick ? wickJabPose(this.punch_t) : spidey ? spiderStrikePose(this.punch_t)
-        : kool ? headbuttPose(this.punch_t) : punchPose(this.punch_t);
+      pose = (jack || (ward && this.wp === 'saber')) ? swordPose(this.punch_t) : wick ? wickJabPose(this.punch_t) : spidey ? spiderStrikePose(this.punch_t)
+        : kool ? headbuttPose(this.punch_t) : ward ? kickPose(this.punch_t) : punchPose(this.punch_t);
       punching = pose !== null;
       if (!punching) { this.punch_t = -1; if (spidey) mr.ry = 0; }
     }
@@ -2637,6 +2837,9 @@ class RemotePlayer {
         const held = (this.wp === null || this.wp === 'sword') ? JACK_GUARD : JACK_HOLD;
         this.right_arm.rx = lerp(this.right_arm.rx, held, k);
         this.left_arm.rx = moving ? -swing * 25 : lerp(this.left_arm.rx, 0, k);
+      } else if (ward && this.wp === 'saber') {
+        this.right_arm.rx = lerp(this.right_arm.rx, JACK_GUARD, k);
+        this.left_arm.rx = moving ? -swing * 25 : lerp(this.left_arm.rx, 0, k);
       } else if (spidey) {
         /* spiderAnim above already posed his arms */
       } else if (moving) {
@@ -2649,7 +2852,7 @@ class RemotePlayer {
 
     // ---- punches / sword chop / jab / headbutt
     if (punching) {
-      if (jack) {
+      if (jack || (ward && this.wp === 'saber')) {
         const [rot, lunge] = pose;
         this.right_arm.rx = rot; this.left_arm.rx = -rot * 0.2; mr.ry = (rot - JACK_GUARD) * 0.1; mr.position.z = lunge;
       } else if (wick) {
@@ -2662,6 +2865,9 @@ class RemotePlayer {
       } else if (kool) {
         const [lean, shove, arms] = pose;
         mr.rx = lean; mr.position.z = shove; this.left_arm.rx = arms; this.right_arm.rx = arms;
+      } else if (ward) {
+        const [leg, lean, lunge, arms] = pose;
+        mr.rx = lean; mr.position.z = lunge; this.right_leg.rx = leg; this.left_leg.rx = -lean; this.left_arm.rx = arms; this.right_arm.rx = arms;
       } else {
         const [rot, stretch, lunge] = pose;
         for (const a of [this.left_arm, this.right_arm]) { a.rx = rot; a.scale.y = stretch; }
@@ -2670,7 +2876,7 @@ class RemotePlayer {
     } else {
       this.left_arm.scale.y = 1; this.right_arm.scale.y = 1;
       mr.position.z = lerp(mr.position.z, 0, k);
-      if (kool) mr.rx = lerp(mr.rx, 0, k);
+      if (kool || ward) mr.rx = lerp(mr.rx, 0, k);
       if (!spidey) mr.ry = lerp(wrap(mr.ry), 0, k);
     }
 
@@ -2735,6 +2941,7 @@ class RemotePlayer {
       held.rx = clamp(this.pitch, -50, 20) * 0.7;
       if (this.wp === 'gun') this.gun.position.z = 0.5 - this.recoil;
     }
+    if (kool && this.wp === 'straw') poseStraw(this.straw, this.pitch);
     if (this.dog) this.dog.update(dt);
   }
 }
@@ -2774,7 +2981,8 @@ function handleFx(m) {                                         // another player
       new ExplosionFx(start, 0.45, rgb(255, 220, 120), false);
       if (m.i) new ExplosionFx(end, 0.7, rgb(255, 240, 200), false);
       if (r) r.recoil = 1.0;
-    } else if (k === 'webshot') { new WebShot(vec(m.p), vec(m.v), null, true); if (r) r.recoil = 1.0; }
+    } else if (k === 'straw') { new StrawShot(vec(m.p), vec(m.v), null, true); new ExplosionFx(vec(m.p), 0.3, rgb(235, 60, 70), false); }
+    else if (k === 'webshot') { new WebShot(vec(m.p), vec(m.v), null, true); if (r) r.recoil = 1.0; }
     else if (k === 'wlstart' && r) makeAnchorWebs(r, m.p);
     else if (k === 'wlgo' && r) dropAnchorWebs(r);
     else if (k === 'webt') { const t = targets.find(x => x.index === m.i); if (t) makeWeb(t, WEB_TIME); }
