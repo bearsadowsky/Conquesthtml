@@ -212,7 +212,7 @@ function mulberry32(a) {
 const QS = new URLSearchParams(location.search);
 /* >>> PUT YOUR RENDER ADDRESS HERE, e.g. 'my-conquest.onrender.com' (no https://, no path).
    Leave it '' to play solo. Add ?solo=1 to the page address to skip the server. <<< */
-const SERVER_HOST = '';
+const SERVER_HOST = 'conquest-html.onrender.com';
 const statusEl = document.getElementById('status');
 function showStatus(t) { statusEl.textContent = t; statusEl.classList.remove('hidden'); }
 function makeWsUrl(host) {
