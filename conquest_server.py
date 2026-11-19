@@ -1,6 +1,10 @@
 """Conquest multiplayer server (WebSocket version, works on Replit).
 Run: python conquest_server.py
 Env: PORT (default 8080)
+GUN GAME: players click Play (message 'ready'). When two are ready a 10 second countdown
+starts (nobody can leave). Every kill on another player moves the killer up the ladder
+(CHARACTERS order) with full health and a random respawn near where they were. A kill made
+while playing the last character (Vader) wins: everyone is told, then kicked after 5 seconds.
 The server is authoritative for player HP, kills/deaths and the 8 target dummies.
 Clients send their position ~20x/sec and report hits; the server applies
 the damage and broadcasts the results.
@@ -24,6 +28,12 @@ WEB_TIME = 5.0                # how long a webbed player stays stuck
 WEB_DAMAGE_TOTAL = 100 / 3    # electric damage over that time
 WEB_TICKS = 10
 MAX_DAMAGE = 500.0            # sanity clamp on a single reported hit
+LAST_LEVEL = len(CHARACTERS) - 1   # Vader: a kill with him wins the game
+COUNTDOWN = 10                # seconds between the 2nd player clicking Play and the start
+WIN_KICK_DELAY = 5            # seconds the winner text shows before everyone is kicked
+SPAWN_RADIUS = 35.0           # after a kill you reappear this far (at most) from where you were
+SPAWN_MIN = 6.0
+MAP_LIMIT = 280.0
 
 
 class Player:
@@ -33,7 +43,9 @@ class Player:
         self.conn = conn
         self.hp = MAX_HP
         self.kind = 'spongebob'   # which character they picked
-        self.ghost = False        # True while they are in character select: untouchable
+        self.ghost = False        # True while they are in the menu: untouchable
+        self.ready = False        # clicked Play: part of the gun game
+        self.level = 0            # index into CHARACTERS (the gun game ladder)
         self.kills = 0
         self.deaths = 0
         self.web_task = None      # running web-electricity timer
@@ -52,6 +64,9 @@ class Game:
             r = random.uniform(18, 45)
             self.target_pos.append([round(math.cos(ang) * r, 2), round(math.sin(ang) * r, 2)])
         self.target_hp = [100.0] * TARGET_COUNT
+        self.phase = 'lobby'      # lobby -> countdown -> playing -> ended -> lobby
+        self.cd_left = 0
+        self.cd_task = None
 
     # ---------------------------------------------------------- sending
     async def _send(self, player, text):
@@ -98,11 +113,15 @@ class Game:
 
     async def remove_player(self, player):
         if self.players.get(player.id) is player:
+            was_ready = player.ready
+            player.ready = False
             del self.players[player.id]
             if player.web_task:
                 player.web_task.cancel()
             await self.broadcast({'t': 'leave', 'id': player.id})
             print(f'- {player.name} left ({len(self.players)} online)')
+            if was_ready:
+                await self.after_leave()
 
     # ---------------------------------------------------------- messages
     async def handle(self, player, m):
@@ -111,10 +130,7 @@ class Game:
             try:
                 player.state = [float(m['x']), float(m['y']), float(m['z']), float(m['ry']),
                                 int(m['w']), float(m['pt']), float(m['pp'])]
-                if m.get('k') in CHARACTERS:
-                    if m['k'] != player.kind:      # switching character: back to full health
-                        player.hp = MAX_HP
-                    player.kind = m['k']
+                # (the character is decided by the gun game level, not by the client)
                 extra = {}
                 wp = m.get('wp')
                 if isinstance(wp, str) and len(wp) <= 16:
@@ -133,6 +149,10 @@ class Game:
                 player.extra = extra
             except (KeyError, TypeError, ValueError):
                 pass
+        elif t == 'ready':
+            await self.set_ready(player)
+        elif t == 'unready':
+            await self.set_unready(player)
         elif t == 'reset':
             # the player just left character select: full health, no web
             player.hp = MAX_HP
@@ -205,8 +225,10 @@ class Game:
 
     async def hit_player(self, attacker, victim_id, amount):
         victim = self.players.get(victim_id)
-        if victim is None or victim.ghost:       # ghosts (character select) can't be hurt
+        if victim is None or victim.ghost:       # ghosts (in the menu) can't be hurt
             return
+        if self.phase != 'playing' or not victim.ready or not attacker.ready:
+            return                                # no damage in the lobby, countdown or after a win
         amount = max(0.0, min(amount, MAX_DAMAGE))
         victim.hp -= amount
         if victim.hp <= 0:
@@ -220,6 +242,133 @@ class Game:
                 killer = attacker.id
                 text = f'{attacker.name} flattened {victim.name}!'
             await self.broadcast({'t': 'died', 'id': victim.id, 'killer': killer, 'text': text})
+            if victim is not attacker and self.phase == 'playing':
+                await self.level_up(attacker)
+
+    # ---------------------------------------------------------- gun game
+    def active(self):
+        return [p for p in self.players.values() if p.ready]
+
+    async def send_to(self, players, obj):
+        text = json.dumps(obj, separators=(',', ':'))
+        if players:
+            await asyncio.gather(*(self._send(p, text) for p in players))
+
+    async def send_gg(self):
+        act = self.active()
+        await self.send_to(act, {'t': 'gg', 'phase': self.phase, 'left': self.cd_left,
+                                 'ready': len(act), 'lv': {str(p.id): p.level for p in act}})
+
+    async def set_ready(self, player):
+        if player.ready:
+            return
+        if self.phase == 'ended':                 # a game just finished: wait for the reset
+            await self.send_to([player], {'t': 'kick'})
+            return
+        player.ready = True
+        player.hp = MAX_HP
+        player.level = 0
+        if self.phase == 'playing':               # joining a running game: start at the lowest level in play
+            others = [p.level for p in self.active() if p is not player]
+            player.level = min(min(others, default=0), LAST_LEVEL - 1)
+        player.kind = CHARACTERS[player.level]
+        print(f'{player.name} is ready ({len(self.active())} ready)')
+        if self.phase == 'lobby' and len(self.active()) >= 2 and self.cd_task is None:
+            self.phase = 'countdown'
+            self.cd_task = asyncio.ensure_future(self.run_countdown())
+        else:
+            await self.send_gg()
+
+    async def set_unready(self, player):
+        if not player.ready or self.phase in ('countdown', 'ended'):
+            return                                # locked in during the countdown
+        player.ready = False
+        player.level = 0
+        player.kind = 'spongebob'
+        player.hp = MAX_HP
+        await self.after_leave()
+
+    async def after_leave(self):
+        if self.phase == 'playing' and len(self.active()) < 2:
+            await self.reset_to_lobby()           # nobody left to play against
+        elif self.phase != 'ended':
+            await self.send_gg()
+
+    async def run_countdown(self):
+        for left in range(COUNTDOWN, 0, -1):
+            if len(self.active()) < 2:            # someone dropped out: back to waiting
+                self.phase = 'lobby'
+                self.cd_left = 0
+                self.cd_task = None
+                await self.send_gg()
+                return
+            self.cd_left = left
+            await self.send_gg()
+            await asyncio.sleep(1)
+        self.cd_task = None
+        if len(self.active()) < 2:
+            self.phase = 'lobby'
+            self.cd_left = 0
+            await self.send_gg()
+            return
+        self.phase = 'playing'
+        self.cd_left = 0
+        for p in self.active():
+            p.level = 0
+            p.kind = CHARACTERS[0]
+            p.hp = MAX_HP
+        print('Game started')
+        await self.send_gg()
+
+    def random_spawn(self, player):
+        x, z = player.state[0], player.state[2]
+        others = [p for p in self.active() if p is not player]
+        best = (x, z)
+        for _ in range(12):
+            ang = random.uniform(0, math.tau)
+            r = random.uniform(SPAWN_MIN, SPAWN_RADIUS)
+            nx, nz = x + math.cos(ang) * r, z + math.sin(ang) * r
+            if abs(nx) > MAP_LIMIT or abs(nz) > MAP_LIMIT:
+                continue
+            best = (nx, nz)
+            if all(math.hypot(nx - o.state[0], nz - o.state[2]) > 10 for o in others):
+                break                              # not right on top of someone else
+        return round(best[0], 2), round(best[1], 2)
+
+    async def level_up(self, killer):
+        if killer.level >= LAST_LEVEL:            # that kill was made with Vader
+            await self.win(killer)
+            return
+        killer.level += 1
+        killer.kind = CHARACTERS[killer.level]
+        killer.hp = MAX_HP
+        x, z = self.random_spawn(killer)
+        await self.send_to(self.active(), {'t': 'lvl', 'id': killer.id, 'level': killer.level,
+                                           'kind': killer.kind, 'x': x, 'z': z})
+
+    async def win(self, player):
+        self.phase = 'ended'
+        print(f'{player.name} won')
+        await self.send_to(self.active(), {'t': 'win', 'id': player.id, 'name': player.name,
+                                           'text': f'{player.name.upper()} WON!'})
+        asyncio.ensure_future(self.finish_after_win())
+
+    async def finish_after_win(self):
+        await asyncio.sleep(WIN_KICK_DELAY)
+        await self.reset_to_lobby()
+
+    async def reset_to_lobby(self):
+        targets = self.active()
+        for p in self.players.values():
+            p.ready = False
+            p.level = 0
+            p.kind = 'spongebob'
+            p.hp = MAX_HP
+            if p.web_task:
+                p.web_task.cancel()
+        self.phase = 'lobby'
+        self.cd_left = 0
+        await self.send_to(targets, {'t': 'kick'})
 
     # ---------------------------------------------------------- snapshots
     async def snapshot_loop(self):
