@@ -1,9 +1,7 @@
 """Conquest multiplayer server (WebSocket version, works on Replit).
-
-Run:  python conquest_server.py
-Env:  PORT (default 8080)
-
-The server is authoritative for player HP and the 8 target dummies.
+Run: python conquest_server.py
+Env: PORT (default 8080)
+The server is authoritative for player HP, kills/deaths and the 8 target dummies.
 Clients send their position ~20x/sec and report hits; the server applies
 the damage and broadcasts the results.
 """
@@ -17,12 +15,12 @@ from http import HTTPStatus
 MAX_PLAYERS = 5
 CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden')
 FX_KINDS = ('spray', 'ship', 'shot', 'point', 'med', 'whistle',
-           'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam')   # ability visuals we relay
+            'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam')  # ability visuals we relay
 TARGET_COUNT = 8
 MAX_HP = 100.0
 TARGET_REVIVE_DELAY = 3.0
 SNAP_INTERVAL = 0.05          # 20 snapshots per second
-WEB_TIME = 5.0               # how long a webbed player stays stuck
+WEB_TIME = 5.0                # how long a webbed player stays stuck
 WEB_DAMAGE_TOTAL = 100 / 3    # electric damage over that time
 WEB_TICKS = 10
 MAX_DAMAGE = 500.0            # sanity clamp on a single reported hit
@@ -34,16 +32,19 @@ class Player:
         self.name = name
         self.conn = conn
         self.hp = MAX_HP
-        self.kind = 'spongebob'       # which character they picked
-        self.web_task = None          # running web-electricity timer
-        self.extra = {}               # weapon in hand, skeleton form, dog position
-        # x, y, z, ry, weapon, punch_t, pitch  (hp is appended when sending)
+        self.kind = 'spongebob'   # which character they picked
+        self.ghost = False        # True while they are in character select: untouchable
+        self.kills = 0
+        self.deaths = 0
+        self.web_task = None      # running web-electricity timer
+        self.extra = {}           # weapon in hand, skeleton form, dog position, ghost flag
+        # x, y, z, ry, weapon, punch_t, pitch (hp is appended when sending)
         self.state = [(pid - 3) * 2.0, 0.0, 0.0, 0.0, 0, -1, 0.0]
 
 
 class Game:
     def __init__(self):
-        self.seed = random.randrange(1, 2**31)
+        self.seed = random.randrange(1, 231)
         self.players = {}
         self.target_pos = []
         for i in range(TARGET_COUNT):
@@ -57,7 +58,7 @@ class Game:
         try:
             await player.conn.send(text)
         except Exception:
-            pass    # that connection is closing; its handler will clean up
+            pass  # that connection is closing; its handler will clean up
 
     async def broadcast(self, obj, exclude=None):
         text = json.dumps(obj, separators=(',', ':'))
@@ -85,6 +86,7 @@ class Game:
             'id': pid,
             'seed': self.seed,
             'players': [{'id': p.id, 'name': p.name} for p in self.players.values()],
+            'stats': {str(p.id): [p.kills, p.deaths] for p in self.players.values()},
             'thp': self.target_hp,
             'targets': self.target_pos,
         }
@@ -110,6 +112,8 @@ class Game:
                 player.state = [float(m['x']), float(m['y']), float(m['z']), float(m['ry']),
                                 int(m['w']), float(m['pt']), float(m['pp'])]
                 if m.get('k') in CHARACTERS:
+                    if m['k'] != player.kind:      # switching character: back to full health
+                        player.hp = MAX_HP
                     player.kind = m['k']
                 extra = {}
                 wp = m.get('wp')
@@ -117,6 +121,10 @@ class Game:
                     extra['wp'] = wp
                 if m.get('sk'):
                     extra['sk'] = 1
+                player.ghost = bool(m.get('gh'))
+                if player.ghost:
+                    extra['gh'] = 1
+                    player.hp = MAX_HP             # ghosts are always topped up
                 if m.get('wl') in (1, 2, 3):
                     extra['wl'] = m['wl']
                 dg = m.get('dg')
@@ -125,6 +133,13 @@ class Game:
                 player.extra = extra
             except (KeyError, TypeError, ValueError):
                 pass
+        elif t == 'reset':
+            # the player just left character select: full health, no web
+            player.hp = MAX_HP
+            if player.web_task:
+                player.web_task.cancel()
+                player.web_task = None
+                await self.broadcast({'t': 'unwebbed', 'id': player.id})
         elif t == 'fx':
             if m.get('k') in FX_KINDS:
                 out = {'t': 'fx', 'id': player.id, 'k': m['k']}
@@ -142,7 +157,8 @@ class Game:
             await self.apply_hits(player, m.get('h'))
         elif t == 'web':
             victim = self.players.get(m.get('id'))
-            if victim is not None and victim is not player and victim.web_task is None:
+            if (victim is not None and victim is not player and not victim.ghost
+                    and victim.web_task is None):
                 victim.web_task = asyncio.ensure_future(self.run_web(player, victim))
 
     async def run_web(self, attacker, victim):
@@ -189,17 +205,21 @@ class Game:
 
     async def hit_player(self, attacker, victim_id, amount):
         victim = self.players.get(victim_id)
-        if victim is None:
+        if victim is None or victim.ghost:       # ghosts (character select) can't be hurt
             return
         amount = max(0.0, min(amount, MAX_DAMAGE))
         victim.hp -= amount
         if victim.hp <= 0:
             victim.hp = MAX_HP
+            victim.deaths += 1
             if victim is attacker:
+                killer = 0                        # 0 = nobody gets the kill
                 text = f'{victim.name} blew themselves up!'
             else:
+                attacker.kills += 1
+                killer = attacker.id
                 text = f'{attacker.name} flattened {victim.name}!'
-            await self.broadcast({'t': 'died', 'id': victim.id, 'text': text})
+            await self.broadcast({'t': 'died', 'id': victim.id, 'killer': killer, 'text': text})
 
     # ---------------------------------------------------------- snapshots
     async def snapshot_loop(self):
