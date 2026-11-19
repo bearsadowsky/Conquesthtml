@@ -239,10 +239,20 @@ async def handler(ws):
 
 
 def health_check(connection, request):
-    """Replit pings plain HTTP on '/' to see if the app is alive; answer 200."""
-    if request.headers.get('Upgrade', '').lower() != 'websocket':
-        return connection.respond(HTTPStatus.OK, 'Conquest server is running.\n')
-    return None
+    """Plain web visits get the game page (so one Render link does everything);
+    websocket connections fall through to the game."""
+    if request.headers.get('Upgrade', '').lower() == 'websocket':
+        return None
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name in ('conquest.html', 'index.html'):
+        path = os.path.join(here, name)
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as f:
+                response = connection.respond(HTTPStatus.OK, f.read())
+            del response.headers['Content-Type']
+            response.headers['Content-Type'] = 'text/html; charset=utf-8'
+            return response
+    return connection.respond(HTTPStatus.OK, 'Conquest server is running.\n')
 
 
 async def main():
@@ -255,3 +265,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
