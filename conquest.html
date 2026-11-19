@@ -75,6 +75,10 @@
   #board th:first-child, #board td:first-child { text-align: left; }
   #board tr.me td { color: #ffd640; font-weight: 700; }
   #board td.sel { color: #7887a5; font-size: .8em; }
+  #gginfo { position: absolute; left: max(1vw, calc(50% - 86 * var(--u))); top: calc(9 * var(--u)); background: rgba(0,0,0,.5); padding: calc(.6 * var(--u)) calc(1.2 * var(--u)); font-size: calc(2.25 * var(--u)); white-space: pre; }
+  #gginfo:empty { display: none; }
+  #big { position: absolute; left: 0; right: 0; top: calc(40 * var(--u)); transform: translateY(-50%); text-align: center; font-size: calc(6.5 * var(--u)); font-weight: 800; line-height: 1.2; white-space: pre; text-shadow: 0 .3vh .9vh #000; }
+  #big.win { color: #ff2a2a; font-size: calc(11 * var(--u)); }
 </style>
 </head>
 <body>
@@ -83,7 +87,7 @@
   <div class="band" id="bandTop"></div>
   <div class="band" id="bandBottom"></div>
   <div class="ctr" id="title">CONQUEST</div>
-  <div class="ctr" id="sub">CHOOSE YOUR FIGHTER</div>
+  <div class="ctr" id="sub">GUN GAME  -  GET KILLS TO CLIMB, WIN WITH A VADER KILL</div>
   <div class="panel" id="left">
     <div class="ctr dim" id="lsel">SELECTED</div>
     <div class="ctr" id="hname"></div>
@@ -104,9 +108,11 @@
   <div id="cross"><i></i><i></i><i></i><i></i><i></i></div>
   <div id="online"></div>
   <div id="msg"></div>
+  <div id="gginfo"></div>
+  <div id="big"></div>
   <div id="weapon"></div>
 </div>
-<div id="resume" class="hidden">Click to play<small>WASD move &bull; Shift sprint &bull; Space jump &bull; 1/2/3 or scroll: weapon &bull; Click: use<br>R reload (Wick) &bull; Hold H: character select</small></div>
+<div id="resume" class="hidden">Click to play<small>WASD move &bull; Shift sprint &bull; Space jump &bull; 1/2/3 or scroll: weapon &bull; Click: use<br>R reload (Wick) &bull; Hold H: back to menu</small></div>
 
 <div id="status" class="hidden"></div>
 
@@ -2418,11 +2424,15 @@ function updatePistol(o, dt) {
 let hHold = 0, leaving = false;
 function updatePlayer(o, dt) {
   // hold H to go back to character select
-  if (keys.KeyH) {
+  const gLocked = NET && (gg.phase === 'countdown' || gg.phase === 'ended');
+  if (keys.KeyH && gLocked) {
+    hHold = 0;
+    if (gg.phase === 'countdown') showMsg("You can't leave during the countdown", 0.15);
+  } else if (keys.KeyH) {
     hHold += dt;
     if (hHold > 0.2 && !leaving) {
       const n = Math.floor(Math.min(1, hHold / 1.5) * 10);
-      showMsg('Hold H for character select  [' + '#'.repeat(n) + '-'.repeat(10 - n) + ']', 0.15);
+      showMsg('Hold H to leave to the menu  [' + '#'.repeat(n) + '-'.repeat(10 - n) + ']', 0.15);
       if (hHold >= 1.5) { leaving = true; returnToMenu(); return; }
     }
   } else hHold = 0;
@@ -2999,15 +3009,16 @@ function renderBoard() {
   const names = new Map();
   if (NET) { for (const [id, n] of netRoster) names.set(id, n); for (const r of remotes.values()) names.set(r.pid, r.name); names.set(NET.my_id, NET.name); }
   else names.set(0, 'You');
-  const rows = [...names].map(([id, name]) => ({ id, name, ...statOf(id) }))
-    .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+  const rows = [...names].map(([id, name]) => ({ id, name, lv: ggLevels.get(id) ?? 0, ...statOf(id) }))
+    .sort((a, b) => b.lv - a.lv || b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
   boardEl.textContent = '';
   const h = document.createElement('h3'); h.textContent = 'LEADERBOARD'; boardEl.appendChild(h);
   const tb = document.createElement('table'), hr = tb.insertRow();
-  for (const c of ['Player', 'Kills', 'Deaths']) { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); }
+  for (const c of (NET ? ['Player', 'Level', 'Kills', 'Deaths'] : ['Player', 'Kills', 'Deaths'])) { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); }
   for (const r of rows) {
     const tr = tb.insertRow(); if (r.id === myId()) tr.className = 'me';
     const a = tr.insertCell(); a.textContent = r.name + (r.id === myId() && NET ? ' (you)' : '');
+    if (NET) tr.insertCell().textContent = r.lv + 1;
     tr.insertCell().textContent = r.kills; tr.insertCell().textContent = r.deaths;
   }
   boardEl.appendChild(tb);
@@ -3074,6 +3085,10 @@ function handleFx(m) {                                         // another player
 function shooterOf(key) { const id = parseInt(String(key).split(':')[0], 10); return Number.isNaN(id) ? null : (remotes.get(id) || null); }
 function handleNet(m) {
   const t = m.t;
+  if (t === 'gg') { ggState(m); return; }
+  if (t === 'lvl') { ggLevel(m); return; }
+  if (t === 'win') { ggWin(m); return; }
+  if (t === 'kick') { ggKick(); return; }
   if (netStateReady) {
     if (t === 'join') netRoster.set(m.id, m.name);
     else if (t === 'leave') netRoster.delete(m.id);
@@ -3131,13 +3146,73 @@ function handleNet(m) {
 }
 function pumpNet() { for (const m of NET.inbox.splice(0)) handleNet(m); }
 
+/* ---- gun game: the server runs the ladder, the lobby countdown and the win ---- */
+const GUN_ORDER = Object.keys(CHAR_INFO);          // spongebob, jack, wick, spiderman, koolaid, warden (Vader = last)
+const gg = { phase: 'off', level: 0 };
+const ggLevels = new Map();
+const bigEl = document.getElementById('big'), ggInfoEl = document.getElementById('gginfo');
+let bigTimer = 0;
+function setBig(text, cls = '', secs = 0) {
+  clearTimeout(bigTimer);
+  bigEl.textContent = text; bigEl.className = cls;
+  if (secs) bigTimer = setTimeout(() => { bigEl.textContent = ''; }, secs * 1000);
+}
+function ggHud() {
+  if (!NET || mode !== 'play') { ggInfoEl.textContent = ''; return; }
+  const last = GUN_ORDER.length - 1, lv = gg.level;
+  ggInfoEl.textContent = `GUN GAME   Level ${lv + 1}/${last + 1}: ${CHAR_INFO[GUN_ORDER[lv]].name}\n`
+    + (lv < last ? `Next: ${CHAR_INFO[GUN_ORDER[lv + 1]].name}` : 'Get a kill to WIN!');
+}
+function switchCharacter(kind, tx, tz) {            // become another character: full health, optionally somewhere else
+  if (!me || !CHAR_INFO[kind]) return;
+  const old = me, x = tx !== undefined ? clamp(tx, -285, 285) : old.x, z = tz !== undefined ? clamp(tz, -285, 285) : old.z;
+  const yaw = old.yaw, pitch = old.pitch, bodyRy = old.body.ry;
+  destroyPlayer(old);
+  mouseHeld = false;
+  me = makePlayer(kind);
+  Object.assign(me, { x, z, y: height(x, z), yaw, pitch });
+  me.body.ry = bodyRy; me.root.position.set(me.x, me.y, me.z); me.camPos.set(me.x, me.y + 1.6, me.z);
+  me.hp = me.max_hp; me.bar.set(1);
+  crossEl.style.setProperty('--gap', 'calc(1.8 * var(--u))');
+  selected = kind;
+}
+function ggState(m) {
+  ggLevels.clear();
+  for (const k in (m.lv || {})) ggLevels.set(parseInt(k, 10), m.lv[k]);
+  const prev = gg.phase;
+  gg.phase = m.phase;
+  if (!me) return;
+  const lv = ggLevels.get(NET.my_id);
+  if (lv !== undefined) { gg.level = lv; if (GUN_ORDER[lv] !== me.kind) switchCharacter(GUN_ORDER[lv]); }
+  if (m.phase === 'lobby') setBig('Waiting for another player...\nHold H to go back to the menu');
+  else if (m.phase === 'countdown') setBig(`Game starts in ${m.left}`);
+  else if (m.phase === 'playing') {
+    if (prev === 'countdown') setBig('GO!', '', 1.2); else { setBig(''); showMsg('Game in progress - catch up!', 2.5); }
+  }
+  ggHud();
+}
+function ggLevel(m) {                                // someone got a kill and moved up
+  ggLevels.set(m.id, m.level);
+  if (!me || m.id !== NET.my_id) return;
+  gg.level = m.level;
+  switchCharacter(m.kind, m.x, m.z);
+  showMsg(`LEVEL UP!  You are now ${CHAR_INFO[m.kind].name}`, 2.5);
+  ggHud();
+}
+function ggWin(m) {                                  // a kill with Vader: show it in red until everyone is kicked
+  if (!me) return;
+  gg.phase = 'ended';
+  setBig(m.text || `${m.name} WON!`, 'win');
+}
+function ggKick() { if (me) returnToMenu(); }
+
 function startGame() {
   if (mode === 'play') return;
   mode = 'play'; leaving = false; hHold = 0; hideTip();
   document.getElementById('menu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   menuGroup.visible = false;
-  me = makePlayer(selected);                           // a brand-new player: full health, every cooldown ready
+  me = makePlayer(NET ? GUN_ORDER[0] : selected);   // online: the gun game starts everyone as the first fighter                           // a brand-new player: full health, every cooldown ready
   Object.assign(me, { x: ghostPos.x, y: ghostPos.y, z: ghostPos.z, yaw: ghostPos.yaw });
   me.body.ry = ghostPos.ry; me.root.position.set(me.x, me.y, me.z); me.camPos.set(me.x, me.y + 1.6, me.z);
   if (NET) NET.send({ t: 'reset' });                   // ask the server to refill our health too
@@ -3148,6 +3223,9 @@ function startGame() {
     for (const i of netDeadTargets) if (i < targets.length) targets[i].netHit(0, 0, 0);
     refreshRoster();
     NET.ready = true; netPumpOn = true;
+    gg.phase = 'lobby'; gg.level = 0; ggHud();
+    setBig('Waiting for another player...\nHold H to go back to the menu');
+    NET.send({ t: 'ready' });                         // I clicked Play
   } else {
     for (let i = 0; i < 8; i++) {                     // eight target dummies in a ring around the spawn
       const ang = i / 8 * Math.PI * 2 + uni(-0.2, 0.2), r = uni(18, 45);
@@ -3170,6 +3248,8 @@ function returnToMenu() {
   targets.length = 0;
   destroyPlayer(me); me = null;
   mode = 'menu'; mouseHeld = false;
+  if (NET) NET.send({ t: 'unready' });
+  gg.phase = 'off'; gg.level = 0; ggLevels.clear(); setBig(''); ggInfoEl.textContent = '';
   if (document.pointerLockElement) document.exitPointerLock();
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('menu').classList.remove('hidden');
