@@ -544,7 +544,8 @@ const WEB_COOLDOWN = 17.0 * CD, WEB_SPEED = 48, WEB_RANGE = 70;
 const STRAW_RANGE = 48.4 * 0.7, STRAW_SPEED = 55, STRAW_DAMAGE = 16.8, STRAW_PUSH = 6, STRAW_GAP = 0.06, STRAW_COOLDOWN = 1.0 / 1.5, STRAW_GRAV = 22;   // Kool-Aid Man's pink straw: 3-shot burst, flies 2x the shockwave's range (48.4) and then drops
 const SLAM_DAMAGE = 90 * 0.8, SLAM_RANGE = 44 * 1.1 / 2, SLAM_SPEED = 22 / 2, SLAM_HEIGHT = 0.8, SLAM_PUSH = 18, SLAM_COOLDOWN = 15.0 * CD, HEADBUTT_DAMAGE = 25;   // Kool-Aid Man: shockwave = 90 dmg (leaves a full-health target on 1/10), 1.1x its range, knee-high so you can jump it
 const SKEL_MOVE_MULT = 1.7, SKEL_ATTACK_MULT = 1.875, SKEL_JUMP_MULT = 1.3;
-const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0 * 0.6, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75 * 1.25, SPRAY_SPREAD = 0.13;
+const BUBBLE_SLOW_RADIUS = 12.0;   // other players this close to a SpongeBob holding the bubble launcher move at half speed
+const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0 * 0.6 * 1.2, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75 * 1.25, SPRAY_SPREAD = 0.13;
 
 /* ---------------- character meshes ---------------- */
 function buildSpongeMesh(parent, sy = 1.0) {
@@ -960,7 +961,7 @@ function spiderStrikePose(t) {
   if (t < 0.46) { const u = (t - 0.26) / 0.20; return [mix(-90, gru, u), mix(-4, grf, u), glu, glf, mix(26, 0, u), mix(0.5, 0, u), mix(24, 14, u)]; }
   return null;
 }
-const sprinting = () => keys.ShiftLeft || keys.ShiftRight;
+const sprinting = () => (keys.ShiftLeft || keys.ShiftRight) && !(me && (me.weapon === 'pistol' || me.weapon === 'straw'));   // no sprinting while holding Wick's pistol or Kool-Aid Man's straw
 
 function animateSponge(o, moving, dt) {
   if (moving && o.grounded) {
@@ -2451,7 +2452,8 @@ function updatePlayer(o, dt) {
     let speed = sprinting() ? Player.RUN : Player.WALK;
     if (o.skeleton) speed *= SKEL_MOVE_MULT;
     if (o.kind === 'warden' && o.weapon === 'saber') speed *= SABER_BOOST;
-    if (o.weapon === 'bubbler') speed *= 0.5;                   // the bubble launcher slows you to half speed
+    for (const r of remotes.values())                           // an enemy SpongeBob holding the bubble launcher slows everyone near him
+      if (!r.ghost && r.kind === 'spongebob' && r.wp === 'bubbler' && Math.hypot(r.x - o.x, r.z - o.z) < BUBBLE_SLOW_RADIUS) { speed *= 0.5; break; }
     o.x = clamp(o.x + dx * speed * dt, -285, 285);
     o.z = clamp(o.z + dz * speed * dt, -285, 285);
   }
