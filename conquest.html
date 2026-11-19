@@ -67,6 +67,14 @@
   #status { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 4vw; background: #0d1426; color: #dbe4f5; font-size: calc(3 * var(--u)); line-height: 1.6; white-space: pre-wrap; }
   #online { position: absolute; left: max(1vw, calc(50% - 86 * var(--u))); top: calc(4 * var(--u)); background: rgba(0,0,0,.5); padding: calc(.6 * var(--u)) calc(1.2 * var(--u)); font-size: calc(2.25 * var(--u)); white-space: pre; }
   #online:empty { display: none; }
+  #board { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; min-width: calc(60 * var(--u)); max-width: 92vw; padding: calc(2 * var(--u)) calc(3 * var(--u)); background: rgba(8, 15, 36, .88); border: calc(.3 * var(--u)) solid #ffd640; color: #fff; pointer-events: none; text-shadow: 0 1px 3px #000; }
+  #board h3 { margin: 0 0 calc(1.2 * var(--u)); text-align: center; font-size: calc(3.2 * var(--u)); color: #ffd640; letter-spacing: .1em; }
+  #board table { width: 100%; border-collapse: collapse; font-size: calc(2.5 * var(--u)); }
+  #board th { color: #96a5be; font-weight: 600; text-align: right; padding: calc(.4 * var(--u)) calc(1.5 * var(--u)); }
+  #board td { text-align: right; padding: calc(.5 * var(--u)) calc(1.5 * var(--u)); }
+  #board th:first-child, #board td:first-child { text-align: left; }
+  #board tr.me td { color: #ffd640; font-weight: 700; }
+  #board td.sel { color: #7887a5; font-size: .8em; }
 </style>
 </head>
 <body>
@@ -1336,7 +1344,7 @@ const DOG_TAN = rgb(196, 142, 84), DOG_WHITE = rgb(240, 235, 225), DOG_BROWN = r
 const targets = [];
 const remotes = new Map();          // other players (online), by id
 const burgers = new Map();          // burgers in flight, by key (online)
-const allVictims = () => { const a = me ? [me] : []; for (const r of remotes.values()) a.push(r); for (const t of targets) a.push(t); return a; };
+const allVictims = () => { const a = me ? [me] : []; for (const r of remotes.values()) if (!r.ghost) a.push(r); for (const t of targets) a.push(t); return a; };
 const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
 
 // health bar that always faces the camera (a sprite drawn from a tiny canvas)
@@ -1362,6 +1370,24 @@ function makeBar(w, h, yOff, parent) {
   return bar;
 }
 
+/* ---- kill / death tally (hold Tab to see it) ---- */
+const stats = new Map(), lastHit = new Map(), lastCredit = new Map();
+let serverNamesKiller = false;
+const myId = () => NET ? NET.my_id : 0;
+const statOf = id => { let s = stats.get(id); if (!s) { s = { kills: 0, deaths: 0 }; stats.set(id, s); } return s; };
+function creditKill(killer, victim) {
+  const now = performance.now();
+  if (now - (lastCredit.get(victim) || -1e9) < 2500) return;      // two clients can claim the same kill: count it once
+  lastCredit.set(victim, now); statOf(killer).kills++;
+}
+function tallyDeath(m) {
+  statOf(m.id).deaths++;
+  const k = [m.killer, m.by, m.killer_id].find(Number.isInteger);
+  if (k !== undefined) { serverNamesKiller = true; creditKill(k, m.id); }
+  else if (!serverNamesKiller && m.id !== myId() && performance.now() - (lastHit.get(m.id) || -1e9) < 3000) {
+    creditKill(myId(), m.id); NET.send({ t: 'fx', k: 'kill', v: m.id });   // we hit them just before they died: tell everyone it was us
+  }
+}
 function hitVictim(v, amount, from, push) {          // offline: apply the damage right here
   if (v === me) playerDamage(amount);
   else v.takeDamage(amount, from, push);
@@ -1372,6 +1398,7 @@ function hitEntry(v, amount, from, push) {            // online: what the server
     const k = away.length() > 0.01 ? away.normalize().multiplyScalar(push || (4 + amount * 0.15)) : new V3();
     return ['t', v.index, r1(amount), r2(k.x), r2(k.z)];
   }
+  if (v !== me) lastHit.set(v.pid, performance.now());
   return ['p', v === me ? NET.my_id : v.pid, r1(amount)];
 }
 function deliverHits(hits, from, push) {              // hits: [[victim, amount], ...]  -> online: a payload to send
@@ -1388,7 +1415,7 @@ function killInstantly(v, from) {                     // whoever kills Wick's do
 function playerDamage(amount) {
   if (!me || me.skeleton) return;          // skeleton form takes no damage
   me.hp = Math.max(0, me.hp - amount);
-  if (me.hp <= 0) { me.hp = me.max_hp; respawnPlayer(); showMsg('You got flattened! Respawning...'); }
+  if (me.hp <= 0) { statOf(myId()).deaths++; me.hp = me.max_hp; respawnPlayer(); showMsg('You got flattened! Respawning...'); }
   me.bar.set(me.hp / me.max_hp);
 }
 function respawnPlayer() {
@@ -2490,6 +2517,7 @@ const resumeEl = document.getElementById('resume');
 
 addEventListener('keydown', e => {
   if (['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Tab') { e.preventDefault(); showBoard(true); return; }
   if (e.repeat) return;
   keys[e.code] = true;
   if (mode === 'menu') {
@@ -2511,8 +2539,8 @@ addEventListener('keydown', e => {
     if (i >= 0 && i < me.weapons.length) setWeapon(me, me.weapons[i]);
   }
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseHeld = false; });
+addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Tab') showBoard(false); });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseHeld = false; showBoard(false); });
 addEventListener('mousemove', e => {
   if (mode !== 'play' || !me || document.pointerLockElement !== canvas) return;
   me.yaw += e.movementX * 0.12;
@@ -2689,6 +2717,12 @@ function makeNameTag(text, color, yOff, parent) {          // billboard text dra
   return tag;
 }
 
+const ghostMats = new Map();
+function ghostMat(m) {
+  let g = ghostMats.get(m);
+  if (!g) { g = m.clone(); g.transparent = true; g.opacity = 0.35; g.depthWrite = false; ghostMats.set(m, g); }
+  return g;
+}
 class RemotePlayer {
   constructor(pid, name, kind = 'spongebob') {
     this.pid = pid; this.name = name;
@@ -2754,6 +2788,17 @@ class RemotePlayer {
       this.whistle_prop.visible = wp === 'whistle';
     }
   }
+  setGhost(on) {                                            // they are picking a character: see-through and untouchable
+    if (on === !!this.ghost) return;
+    this.ghost = on;
+    this.root.traverse(o => {
+      if (!o.isMesh) return;
+      if (on) { o.userData.m0 = o.material; o.material = ghostMat(o.material); }
+      else if (o.userData.m0) { o.material = o.userData.m0; o.userData.m0 = null; }
+    });
+    this.bar.sprite.visible = !on;
+    this.name_tag.set(on ? this.name + ' (selecting)' : this.name);
+  }
   setSkel(on) {
     if (this.kind !== 'jack' || on === this.skeleton) return;
     setSkeleton(this, on);
@@ -2771,7 +2816,8 @@ class RemotePlayer {
     if (Math.abs(hp - this.hp) > 0.01) { this.hp = hp; this.bar.set(hp / this.max_hp); }
     extra = extra || {};
     this.applyWeapon(extra.wp !== undefined ? extra.wp : (w === 1 ? 'gun' : 'fist'));
-    this.setSkel(!!extra.sk);
+    this.setGhost(!!extra.gh);
+    this.setSkel(!!extra.sk && !extra.gh);
     const stage = { 1: 'set', 2: 'tension', 3: 'fly' }[extra.wl] || null;
     if (stage !== this.wl_stage) { this.wl_stage = stage; this.wl_t = 0; }
     const dg = extra.dg;
@@ -2946,6 +2992,36 @@ class RemotePlayer {
   }
 }
 
+/* ---- hold Tab: leaderboard ---- */
+const boardEl = document.createElement('div'); boardEl.id = 'board'; boardEl.className = 'hidden'; document.body.appendChild(boardEl);
+let boardOn = false, boardT = 0;
+function renderBoard() {
+  const names = new Map();
+  if (NET) { for (const [id, n] of netRoster) names.set(id, n); for (const r of remotes.values()) names.set(r.pid, r.name); names.set(NET.my_id, NET.name); }
+  else names.set(0, 'You');
+  const rows = [...names].map(([id, name]) => ({ id, name, ...statOf(id) }))
+    .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+  boardEl.textContent = '';
+  const h = document.createElement('h3'); h.textContent = 'LEADERBOARD'; boardEl.appendChild(h);
+  const tb = document.createElement('table'), hr = tb.insertRow();
+  for (const c of ['Player', 'Kills', 'Deaths']) { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); }
+  for (const r of rows) {
+    const tr = tb.insertRow(); if (r.id === myId()) tr.className = 'me';
+    const a = tr.insertCell(); a.textContent = r.name + (r.id === myId() && NET ? ' (you)' : '');
+    tr.insertCell().textContent = r.kills; tr.insertCell().textContent = r.deaths;
+  }
+  boardEl.appendChild(tb);
+}
+function showBoard(on) { if (on === boardOn) return; boardOn = on; boardEl.classList.toggle('hidden', !on); if (on) { boardT = 0; renderBoard(); } }
+
+/* ---- ghost: while choosing a character you stay in the world, see-through and untouchable ---- */
+let ghostPos = { x: SPAWN_X, y: height(SPAWN_X, 0), z: 0, ry: 0, yaw: 0 }, ghostT = 0;
+function sendGhost(dt) {
+  ghostT += dt; if (ghostT < 0.1) return; ghostT = 0;
+  NET.send({ t: 's', x: r2(ghostPos.x), y: r2(ghostPos.y), z: r2(ghostPos.z), ry: r1(ghostPos.ry), w: 0, k: selected, wp: WEAPONS[selected][0],
+    pt: -1, pp: 0, sk: 1, gh: 1 });                      // gh = ghost; sk (the no-damage flag) is sent too so the server can ignore hits
+}
+
 const netRoster = new Map();          // online: who is connected (kept up to date even while in the menu)
 const netDeadTargets = new Set();     // online: which dummies are currently down
 let netStateReady = false, netPumpOn = false;
@@ -3004,6 +3080,8 @@ function handleNet(m) {
     else if (t === 'thit') { if (m.hp <= 0) netDeadTargets.add(m.i); else netDeadTargets.delete(m.i); }
     else if (t === 'trevive') netDeadTargets.delete(m.i);
   }
+  if (t === 'died') tallyDeath(m);
+  else if (t === 'fx' && m.k === 'kill' && !serverNamesKiller && Number.isInteger(m.v)) creditKill(m.id, m.v);
   if (!me && ['snap', 'join', 'leave', 'fire', 'explode', 'thit', 'trevive', 'died', 'fx', 'webbed', 'unwebbed'].includes(t)) return;   // in character select: tracked above, nothing to show
   if (t === 'snap') {
     for (const [key, a] of Object.entries(m.p)) {
@@ -3059,7 +3137,10 @@ function startGame() {
   document.getElementById('menu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   menuGroup.visible = false;
-  me = makePlayer(selected);
+  me = makePlayer(selected);                           // a brand-new player: full health, every cooldown ready
+  Object.assign(me, { x: ghostPos.x, y: ghostPos.y, z: ghostPos.z, yaw: ghostPos.yaw });
+  me.body.ry = ghostPos.ry; me.root.position.set(me.x, me.y, me.z); me.camPos.set(me.x, me.y + 1.6, me.z);
+  if (NET) NET.send({ t: 'reset' });                   // ask the server to refill our health too
   if (NET) {                                          // the server decides where the dummies stand
     NET.welcome.targets.forEach(([tx, tz], i) => targets.push(new Target(tx, tz, i)));
     initNetState();
@@ -3080,6 +3161,8 @@ function startGame() {
 }
 function returnToMenu() {
   if (!me) return;
+  ghostPos = { x: me.x, y: me.y, z: me.z, ry: me.body.ry, yaw: me.yaw };
+  showBoard(false);
   clearEffects(); webs.clear(); anchorWebs.clear(); burgers.clear();
   for (const r of remotes.values()) r.cleanup();
   remotes.clear();
@@ -3108,6 +3191,8 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, clock.getDelta());
   if (NET && netPumpOn) pumpNet();
+  if (NET && mode === 'menu') sendGhost(dt);
+  if (boardOn) { boardT += dt; if (boardT > 0.2) { boardT = 0; renderBoard(); } }
   if (mode === 'menu') updateMenu(dt);
   else if (me) { updatePlayer(me, dt); for (const t of targets) t.update(dt); for (const r of remotes.values()) r.update(dt); }
   updateEffects(dt);
