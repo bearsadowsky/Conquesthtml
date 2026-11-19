@@ -532,19 +532,19 @@ const SPIDER_GUARD_R = [-22, -38], SPIDER_GUARD_L = [-26, -42];
 // Real cooldowns. Add ?fast to the URL to cut them to 20% for testing.
 const FAST = new URLSearchParams(location.search).has('fast'), CD = FAST ? 0.2 : 1;
 const SHIP_COOLDOWN = 9.0 * CD, MED_FLIP_TIME = 1.0, MED_DURATION = 6.0, MED_COOLDOWN = 45.0 * CD;
-const SPLASH_DAMAGE = 50, DIRECT_DAMAGE = 67, SPRAY_DAMAGE = 4, SPRAY_PUSH = 16.0, PISTOL_DAMAGE = 30, PISTOL_PUSH = 4.0;
-const SHIP_DAMAGE = 70, SHIP_SPEED = 15.3, SHIP_RANGE = 44, SHIP_PUSH = 34;
-const WEBLAUNCH_DAMAGE = 60, WEBLAUNCH_COOLDOWN = 5.0 * CD, WEBLAUNCH_DIST = SHIP_RANGE * 2 / 3, WEBLAUNCH_FLY_TIME = 0.55;
-const WEB_TIME = 5.0, WEB_DAMAGE_TOTAL = 100 / 3, WEB_TICKS = 10;
-const WHISTLE_COOLDOWN = 75.0 * CD, DOG_HP = 100, DOG_CHASE_TIME = 8.0, DOG_SMACK_DAMAGE = 10 * 2 / 3, DOG_SMACK_RATE = 0.65,
-  DOG_SMACK_REACH = 1.9, DOG_CHASE_SPEED = 18.0 / 2.5, DOG_FOLLOW_SPEED = 16.0;
+const SPLASH_DAMAGE = 50, DIRECT_DAMAGE = 67, SPRAY_DAMAGE = 4, SPRAY_PUSH = 16.0, PISTOL_DAMAGE = 30 * 0.8, PISTOL_PUSH = 4.0;
+const SHIP_DAMAGE = 70, SHIP_SPEED = 15.3 * 1.5, SHIP_RANGE = 44 * 1.1, SHIP_PUSH = 34;
+const WEBLAUNCH_DAMAGE = 60, WEBLAUNCH_COOLDOWN = 5.0 * CD, WEBLAUNCH_DIST = 44 * 2 / 3, WEBLAUNCH_FLY_TIME = 0.55;
+const WEB_TIME = 5.0, WEB_DAMAGE_TOTAL = 100 / 3 * 1.7, WEB_TICKS = 10;
+const WHISTLE_COOLDOWN = 35.0 * CD, DOG_HP = 100, DOG_CHASE_TIME = 8.0, DOG_SMACK_DAMAGE = 10 * 2 / 3 * 1.5, DOG_SMACK_RATE = 0.65,
+  DOG_SMACK_REACH = 1.9, DOG_CHASE_SPEED = 18.0 / 2.5 * 1.5, DOG_FOLLOW_SPEED = 16.0 * 1.5;
 const SPIDER_STRIKE_DAMAGE = 25, PUNCH_DAMAGE = 20, SWORD_DAMAGE = 30, SWORD_REACH = 3.4;
-const PISTOL_MAG = 8, PISTOL_RELOAD = 1.6, PISTOL_RATE = 0.30, PISTOL_BLOOM_GAIN = 4.0, PISTOL_BLOOM_MAX = 12.5, PISTOL_BLOOM_DECAY = 8.75, PISTOL_RANGE = 150;
+const PISTOL_MAG = 8, PISTOL_RELOAD = 1.6, PISTOL_RATE = 0.30, PISTOL_BLOOM_GAIN = 4.0 * 1.5, PISTOL_BLOOM_MAX = 12.5 * 1.5, PISTOL_BLOOM_DECAY = 8.75, PISTOL_RANGE = 150;
 const WEB_COOLDOWN = 17.0 * CD, WEB_SPEED = 48, WEB_RANGE = 70;
-const STRAW_RANGE = 48.4, STRAW_SPEED = 55, STRAW_DAMAGE = 16.8, STRAW_PUSH = 6, STRAW_GAP = 0.06, STRAW_COOLDOWN = 1.0 / 1.5, STRAW_GRAV = 22;   // Kool-Aid Man's pink straw: 3-shot burst, flies 2x the shockwave's range (48.4) and then drops
-const SLAM_DAMAGE = 90, SLAM_RANGE = SHIP_RANGE * 1.1 / 2, SLAM_SPEED = 22, SLAM_HEIGHT = 0.8, SLAM_PUSH = 18, SLAM_COOLDOWN = 15.0 * CD, HEADBUTT_DAMAGE = 25;   // Kool-Aid Man: shockwave = 90 dmg (leaves a full-health target on 1/10), 1.1x its range, knee-high so you can jump it
+const STRAW_RANGE = 48.4 * 0.7, STRAW_SPEED = 55, STRAW_DAMAGE = 16.8, STRAW_PUSH = 6, STRAW_GAP = 0.06, STRAW_COOLDOWN = 1.0 / 1.5, STRAW_GRAV = 22;   // Kool-Aid Man's pink straw: 3-shot burst, flies 2x the shockwave's range (48.4) and then drops
+const SLAM_DAMAGE = 90 * 0.8, SLAM_RANGE = 44 * 1.1 / 2, SLAM_SPEED = 22 / 2, SLAM_HEIGHT = 0.8, SLAM_PUSH = 18, SLAM_COOLDOWN = 15.0 * CD, HEADBUTT_DAMAGE = 25;   // Kool-Aid Man: shockwave = 90 dmg (leaves a full-health target on 1/10), 1.1x its range, knee-high so you can jump it
 const SKEL_MOVE_MULT = 1.7, SKEL_ATTACK_MULT = 1.875, SKEL_JUMP_MULT = 1.3;
-const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75, SPRAY_SPREAD = 0.13;
+const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0 * 0.6, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75 * 1.25, SPRAY_SPREAD = 0.13;
 
 /* ---------------- character meshes ---------------- */
 function buildSpongeMesh(parent, sy = 1.0) {
@@ -1311,7 +1311,7 @@ class StrawShot {         // a red Kool-Aid pellet: flies straight until it has 
 class WebShot {
   constructor(pos, vel, owner = null, visual = false) {
     this.owner = owner; this.visual = visual;
-    this.m = new THREE.Mesh(GEO_S, getMat(rgb(245, 247, 255))); this.m.position.copy(pos); this.m.scale.setScalar(0.28); world.add(this.m);
+    this.m = new THREE.Mesh(GEO_S, getMat(rgb(245, 247, 255))); this.m.position.copy(pos); this.m.scale.setScalar(0.28 * 1.7); world.add(this.m);
     this.origin = pos.clone(); this.vel = vel.clone(); this.t = 0;
     this.line = new THREE.Mesh(GEO_B, getMat(rgb(235, 238, 250))); world.add(this.line); effects.add(this);
   }
@@ -1325,7 +1325,7 @@ class WebShot {
     }
     if (!this.visual) for (const v of allVictims()) {      // the web sticks to whoever it hits and electrifies them
       if (v === this.owner || !v.alive) continue;
-      if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 1.15) {
+      if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 1.15 * 1.7) {
         if (v instanceof Target) {
           if (NET) NET.send({ t: 'fx', k: 'webt', i: v.index });
           makeWeb(v, WEB_TIME, true);
@@ -2451,6 +2451,7 @@ function updatePlayer(o, dt) {
     let speed = sprinting() ? Player.RUN : Player.WALK;
     if (o.skeleton) speed *= SKEL_MOVE_MULT;
     if (o.kind === 'warden' && o.weapon === 'saber') speed *= SABER_BOOST;
+    if (o.weapon === 'bubbler') speed *= 0.5;                   // the bubble launcher slows you to half speed
     o.x = clamp(o.x + dx * speed * dt, -285, 285);
     o.z = clamp(o.z + dz * speed * dt, -285, 285);
   }
