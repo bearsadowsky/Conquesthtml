@@ -3695,8 +3695,8 @@ function startGame(free = false) {
   Object.assign(me, { x: ghostPos.x, y: ghostPos.y, z: ghostPos.z, yaw: ghostPos.yaw });
   me.body.ry = ghostPos.ry; me.root.position.set(me.x, me.y, me.z); me.camPos.set(me.x, me.y + 1.6, me.z);
   if (NET) NET.send({ t: 'reset' });                   // ask the server to refill our health too
-  if (NET) {                                          // the server decides where the dummies stand
-    NET.welcome.targets.forEach(([tx, tz], i) => targets.push(new Target(tx, tz, i)));
+  if (NET) {                                          // the server decides where the dummies stand (free play only)
+    if (free) NET.welcome.targets.forEach(([tx, tz], i) => targets.push(new Target(tx, tz, i)));   // dummies only in free play: the gun game is players only
     initNetState();
     // (other players' models appear with their first snapshot, so only people in our room show up)
     for (const i of netDeadTargets) if (i < targets.length) targets[i].netHit(0, 0, 0);
