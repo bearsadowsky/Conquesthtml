@@ -1552,7 +1552,8 @@ function respawnPlayer() {
   if (o.uni) endUnibeam(o);
   o.fp_left = 0;
   o.web_t = 0;
-  o.x = SPAWN_X; o.z = 0; o.y = height(SPAWN_X, 0); o.vy = 0;
+  const sa = Math.random() * Math.PI * 2, sr = Math.sqrt(Math.random()) * 10;     // respawn anywhere within 10 tiles of the spawn point
+  o.x = SPAWN_X + Math.cos(sa) * sr; o.z = Math.sin(sa) * sr; o.y = height(o.x, o.z); o.vy = 0;
   o.camPos.set(o.x, o.y + 1.6, o.z);
   if (o.kind === 'spiderman') { o.spin.ry = 0; o.body.rx = 0; }
 }
