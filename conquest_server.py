@@ -5,6 +5,10 @@ GUN GAME: players click Play (message 'ready'). When two are ready a 10 second c
 starts (nobody can leave). Every kill on another player moves the killer up the ladder
 (CHARACTERS order) with full health and a random respawn near where they were. A kill made
 while playing the last character (Vader) wins: everyone is told, then kicked after 5 seconds.
+FREE PLAY: a second, separate room. A player who clicks Free Play (message 'free' with a character
+kind) can be any character and switch whenever they like ('fkind'). Free players only see and hurt other
+free players, never respawn into the ladder, and have their own kills/deaths table (message 'fp').
+Gun game and free play share the server and the map, but nothing else.
 The server is authoritative for player HP, kills/deaths and the 8 target dummies.
 Clients send their position ~20x/sec and report hits; the server applies
 the damage and broadcasts the results.
@@ -17,7 +21,7 @@ import random
 from http import HTTPStatus
 
 MAX_PLAYERS = 5
-CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden')
+CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'ironman', 'warden')
 FX_KINDS = ('spray', 'ship', 'shot', 'point', 'med', 'whistle',
             'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam', 'fpull', 'repulsor', 'repcharge', 'unistart')  # ability visuals we relay
 TARGET_COUNT = 8
@@ -55,6 +59,9 @@ class Player:
         self.ghost = False        # True while they are in the menu: untouchable
         self.skeleton = False     # True while Jack is in skeleton form: takes no damage
         self.ready = False        # clicked Play: part of the gun game
+        self.free = False         # clicked Free Play: part of the free play room
+        self.fkills = 0           # free play tally (kept apart from the gun game's)
+        self.fdeaths = 0
         self.level = 0            # index into CHARACTERS (the gun game ladder)
         self.kills = 0
         self.deaths = 0
@@ -62,6 +69,10 @@ class Player:
         self.extra = {}           # weapon in hand, skeleton form, dog position, ghost flag
         # x, y, z, ry, weapon, punch_t, pitch (hp is appended when sending)
         self.state = [(pid - 3) * 2.0, 0.0, 0.0, 0.0, 0, -1, 0.0]
+
+    def room(self):
+        """'gun', 'free', or None while they are in the menu."""
+        return 'gun' if self.ready else 'free' if self.free else None
 
 
 class Game:
@@ -88,6 +99,15 @@ class Game:
     async def broadcast(self, obj, exclude=None):
         text = json.dumps(obj, separators=(',', ':'))
         targets = [p for p in list(self.players.values()) if p is not exclude]
+        if targets:
+            await asyncio.gather(*(self._send(p, text) for p in targets))
+
+    async def broadcast_room(self, room, obj, exclude=None):
+        """Send only to the players who are in that room (gun / free)."""
+        if room is None:
+            return
+        text = json.dumps(obj, separators=(',', ':'))
+        targets = [p for p in list(self.players.values()) if p is not exclude and p.room() == room]
         if targets:
             await asyncio.gather(*(self._send(p, text) for p in targets))
 
@@ -124,7 +144,9 @@ class Game:
     async def remove_player(self, player):
         if self.players.get(player.id) is player:
             was_ready = player.ready
+            was_free = player.free
             player.ready = False
+            player.free = False
             del self.players[player.id]
             if player.web_task:
                 player.web_task.cancel()
@@ -132,6 +154,8 @@ class Game:
             print(f'- {player.name} left ({len(self.players)} online)')
             if was_ready:
                 await self.after_leave()
+            if was_free:
+                await self.send_fp()
 
     # ---------------------------------------------------------- messages
     async def handle(self, player, m):
@@ -162,47 +186,59 @@ class Game:
                 pass
         elif t == 'ready':
             await self.set_ready(player)
+        elif t == 'free':
+            await self.set_free(player, m.get('kind'))
+        elif t == 'fkind':
+            if player.free:
+                await self.set_free(player, m.get('kind'))
         elif t == 'unready':
-            await self.set_unready(player)
+            if player.free:
+                await self.leave_free(player)
+            else:
+                await self.set_unready(player)
         elif t == 'reset':
             # the player just left character select: full health, no web
             player.hp = MAX_HP
             if player.web_task:
                 player.web_task.cancel()
                 player.web_task = None
-                await self.broadcast({'t': 'unwebbed', 'id': player.id})
+                await self.broadcast_room(player.room(), {'t': 'unwebbed', 'id': player.id})
         elif t == 'fx':
             if m.get('k') in FX_KINDS:
                 out = {'t': 'fx', 'id': player.id, 'k': m['k']}
                 for key in ('p', 'd', 'e', 'v', 'i'):
                     if key in m:
                         out[key] = m[key]
-                await self.broadcast(out, exclude=player)
+                await self.broadcast_room(player.room(), out, exclude=player)
         elif t == 'fire':
-            await self.broadcast({'t': 'fire', 'b': m.get('b'), 'p': m.get('p'), 'v': m.get('v')},
-                                 exclude=player)
+            await self.broadcast_room(player.room(),
+                                      {'t': 'fire', 'b': m.get('b'), 'p': m.get('p'), 'v': m.get('v')},
+                                      exclude=player)
         elif t == 'explode':
-            await self.broadcast({'t': 'explode', 'b': m.get('b'), 'p': m.get('p')}, exclude=player)
+            await self.broadcast_room(player.room(),
+                                      {'t': 'explode', 'b': m.get('b'), 'p': m.get('p')}, exclude=player)
             await self.apply_hits(player, m.get('h'))
         elif t == 'punch':
             await self.apply_hits(player, m.get('h'))
         elif t == 'web':
             victim = self.players.get(m.get('id'))
             if (victim is not None and victim is not player and not victim.ghost
-                    and victim.web_task is None):
+                    and victim.web_task is None and player.room() is not None
+                    and victim.room() == player.room()):
                 victim.web_task = asyncio.ensure_future(self.run_web(player, victim))
 
     async def run_web(self, attacker, victim):
         """Pin a player for WEB_TIME seconds and shock them a little every tick."""
         try:
-            await self.broadcast({'t': 'webbed', 'id': victim.id, 'dur': WEB_TIME})
+            room = victim.room()
+            await self.broadcast_room(room, {'t': 'webbed', 'id': victim.id, 'dur': WEB_TIME})
             step = WEB_TIME / WEB_TICKS
             for _ in range(WEB_TICKS):
                 await asyncio.sleep(step)
                 if self.players.get(victim.id) is not victim:
                     return
                 await self.hit_player(attacker, victim.id, WEB_DAMAGE_TOTAL / WEB_TICKS, 'web')
-            await self.broadcast({'t': 'unwebbed', 'id': victim.id})
+            await self.broadcast_room(room, {'t': 'unwebbed', 'id': victim.id})
         finally:
             victim.web_task = None
 
@@ -240,23 +276,67 @@ class Game:
             return
         if victim.skeleton and cause != 'hunted':  # skeletons can't be hurt, except by the dog's curse
             return
-        if self.phase != 'playing' or not victim.ready or not attacker.ready:
+        room = attacker.room()
+        if room is None or victim.room() != room:
+            return                                # you can only hurt people in your own room
+        if room == 'gun' and self.phase != 'playing':
             return                                # no damage in the lobby, countdown or after a win
         amount = max(0.0, min(amount, MAX_DAMAGE))
         victim.hp -= amount
         if victim.hp <= 0:
             victim.hp = MAX_HP
-            victim.deaths += 1
+            if room == 'gun':
+                victim.deaths += 1
+            else:
+                victim.fdeaths += 1
             verb = DEATH_TEXT.get(cause, DEFAULT_DEATH) if isinstance(cause, str) else DEFAULT_DEATH
             text = f'{victim.name} {verb}'
             if victim is attacker:
                 killer = 0                        # 0 = nobody gets the kill
             else:
-                attacker.kills += 1
+                if room == 'gun':
+                    attacker.kills += 1
+                else:
+                    attacker.fkills += 1
                 killer = attacker.id
-            await self.broadcast({'t': 'died', 'id': victim.id, 'killer': killer, 'text': text})
-            if victim is not attacker and self.phase == 'playing':
+            await self.broadcast_room(room, {'t': 'died', 'id': victim.id, 'killer': killer, 'text': text})
+            if room == 'free':
+                await self.send_fp()
+            elif victim is not attacker and self.phase == 'playing':
                 await self.level_up(attacker)
+
+    # ---------------------------------------------------------- free play
+    def free_players(self):
+        return [p for p in self.players.values() if p.free]
+
+    async def send_fp(self):
+        fp = self.free_players()
+        rows = [[p.id, p.fkills, p.fdeaths, p.kind] for p in fp]
+        await self.send_to(fp, {'t': 'fp', 'rows': rows})
+
+    async def set_free(self, player, kind):
+        if player.ready:
+            return                                # in the gun game: leave it first
+        if kind not in CHARACTERS:
+            kind = 'spongebob'
+        if not player.free:
+            player.free = True
+            player.hp = MAX_HP
+            print(f'{player.name} joined free play ({len(self.free_players())} there)')
+        player.kind = kind
+        await self.send_fp()
+
+    async def leave_free(self, player):
+        if not player.free:
+            return
+        if player.web_task:
+            player.web_task.cancel()
+            player.web_task = None
+            await self.broadcast_room('free', {'t': 'unwebbed', 'id': player.id})
+        player.free = False
+        player.kind = 'spongebob'
+        player.hp = MAX_HP
+        await self.send_fp()
 
     # ---------------------------------------------------------- gun game
     def active(self):
@@ -273,7 +353,7 @@ class Game:
                                  'ready': len(act), 'lv': {str(p.id): p.level for p in act}})
 
     async def set_ready(self, player):
-        if player.ready:
+        if player.ready or player.free:
             return
         if self.phase == 'ended':                 # a game just finished: wait for the reset
             await self.send_to([player], {'t': 'kick'})
@@ -373,6 +453,8 @@ class Game:
     async def reset_to_lobby(self):
         targets = self.active()
         for p in self.players.values():
+            if p.free:
+                continue                          # free play carries on whatever the gun game does
             p.ready = False
             p.level = 0
             p.kind = 'spongebob'
@@ -387,10 +469,18 @@ class Game:
     async def snapshot_loop(self):
         while True:
             await asyncio.sleep(SNAP_INTERVAL)
-            if self.players:
-                snap = {str(p.id): [round(v, 2) if isinstance(v, float) else v for v in p.state]
-                        + [round(p.hp, 1), p.kind, p.extra] for p in self.players.values()}
-                await self.broadcast({'t': 'snap', 'p': snap})
+            players = list(self.players.values())
+            if not players:
+                continue
+            data = {p.id: (p.room(), [round(v, 2) if isinstance(v, float) else v for v in p.state]
+                           + [round(p.hp, 1), p.kind, p.extra]) for p in players}
+            for room in ('gun', 'free'):
+                targets = [p for p in players if p.room() == room]
+                if not targets:
+                    continue
+                # your own room, plus the see-through ghosts of whoever is in the menu
+                snap = {str(pid): d for pid, (r, d) in data.items() if r in (room, None)}
+                await self.send_to(targets, {'t': 'snap', 'p': snap})
 
 
 game = Game()
