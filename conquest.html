@@ -524,28 +524,35 @@ const KOOL_RED = rgb(214, 36, 48), KOOL_LIGHT = rgb(236, 84, 94), KOOL_DARK = rg
 const BUN = rgb(222, 160, 70), PATTY = rgb(95, 52, 30), CHEESE = rgb(255, 205, 40), LETTUCE = rgb(70, 175, 60);
 
 const LEG_LEN = 0.7, SPONGE_LEG_LEN = LEG_LEN * 0.6, SPONGE_LEG_CUT = LEG_LEN - SPONGE_LEG_LEN, FEET_LIFT = 0.55;
-const feetLift = kind => FEET_LIFT - (kind === 'spongebob' ? SPONGE_LEG_CUT : 0);
+const IRON_REST_R = [-6, -22], IRON_REST_L = [-6, -22];   // Iron Man rests with his arms down at his sides, elbows just slightly bent
+const IRON_SCALE = 1.22;                              // Iron Man is a bigger suit: the whole model is scaled up and his body is lifted to keep his boots on the ground
+const feetLift = kind => kind === 'ironman' ? FEET_LIFT * IRON_SCALE : FEET_LIFT - (kind === 'spongebob' ? SPONGE_LEG_CUT : 0);
 const JACK_GUARD = -35, JACK_HOLD = -70;
 const WICK_GUARD_R = [-30, -95], WICK_GUARD_L = [-35, -100];
 const SPIDER_GUARD_R = [-22, -38], SPIDER_GUARD_L = [-26, -42];
 
 // Real cooldowns. Add ?fast to the URL to cut them to 20% for testing.
 const FAST = new URLSearchParams(location.search).has('fast'), CD = FAST ? 0.2 : 1;
-const SHIP_COOLDOWN = 9.0 * CD, MED_FLIP_TIME = 1.0, MED_DURATION = 6.0, MED_COOLDOWN = 45.0 * CD;
+const SHIP_COOLDOWN = 9.0 * CD, MED_FLIP_TIME = 1.0, MED_DURATION = 6.0, MED_COOLDOWN = 30.0 * CD;
 const SPLASH_DAMAGE = 50, DIRECT_DAMAGE = 67, SPRAY_DAMAGE = 4, SPRAY_PUSH = 16.0, PISTOL_DAMAGE = 30 * 0.8, PISTOL_PUSH = 4.0;
 const SHIP_DAMAGE = 70, SHIP_SPEED = 15.3 * 1.5, SHIP_RANGE = 44 * 1.1, SHIP_PUSH = 34;
 const WEBLAUNCH_DAMAGE = 60, WEBLAUNCH_COOLDOWN = 5.0 * CD, WEBLAUNCH_DIST = 44 * 2 / 3, WEBLAUNCH_FLY_TIME = 0.55;
 const WEB_TIME = 5.0, WEB_DAMAGE_TOTAL = 100 / 3 * 1.7, WEB_TICKS = 10;
-const WHISTLE_COOLDOWN = 35.0 * CD, DOG_HP = 100, DOG_CHASE_TIME = 8.0, DOG_SMACK_DAMAGE = 10 * 2 / 3 * 1.5, DOG_SMACK_RATE = 0.65,
+const WHISTLE_COOLDOWN = 35.0 * CD, DOG_HP = 50, DOG_CHASE_TIME = 8.0, DOG_SMACK_DAMAGE = 10 * 2 / 3 * 1.5, DOG_SMACK_RATE = 0.65,
   DOG_SMACK_REACH = 1.9, DOG_CHASE_SPEED = 18.0 / 2.5 * 1.5, DOG_FOLLOW_SPEED = 16.0 * 1.5;
 const SPIDER_STRIKE_DAMAGE = 25, PUNCH_DAMAGE = 20, SWORD_DAMAGE = 30, SWORD_REACH = 3.4;
 const PISTOL_MAG = 8, PISTOL_RELOAD = 1.6, PISTOL_RATE = 0.30, PISTOL_BLOOM_GAIN = 4.0 * 1.5, PISTOL_BLOOM_MAX = 12.5 * 1.5, PISTOL_BLOOM_DECAY = 8.75, PISTOL_RANGE = 150;
 const WEB_COOLDOWN = 17.0 * CD, WEB_SPEED = 48, WEB_RANGE = 70;
+// Iron Man's repulsor: a white-blue bolt, 1.1x the straw's range, crossing it in 0.1 s; 3.34/10 of a 100 hp bar; a click charges for 1 s (the palm glows brighter), then fires; 0.5 s before the next charge can start
+const REPULSOR_RANGE = 48.4 * 0.7 * 1.1 * 1.75, REPULSOR_TIME = 0.1, REPULSOR_SPEED = REPULSOR_RANGE / REPULSOR_TIME, REPULSOR_DAMAGE = 100 * 3.34 / 10, REPULSOR_COOLDOWN = 0.5 * CD, REPULSOR_CHARGE = 1.0, REPULSOR_SIZE = 1.8,   // REPULSOR_SIZE scales the look of the beam and the charge glow (and the hitbox)
+  REPULSOR_PUSH = 5;
 const STRAW_RANGE = 48.4 * 0.7, STRAW_SPEED = 55, STRAW_DAMAGE = 16.8, STRAW_PUSH = 6, STRAW_GAP = 0.06, STRAW_COOLDOWN = 1.0 / 1.5, STRAW_GRAV = 22;   // Kool-Aid Man's pink straw: 3-shot burst, flies 2x the shockwave's range (48.4) and then drops
 const SLAM_DAMAGE = 90 * 0.8, SLAM_RANGE = 44 * 1.1 / 2, SLAM_SPEED = 22 / 2, SLAM_HEIGHT = 0.8, SLAM_PUSH = 18, SLAM_COOLDOWN = 15.0 * CD, HEADBUTT_DAMAGE = 25;   // Kool-Aid Man: shockwave = 90 dmg (leaves a full-health target on 1/10), 1.1x its range, knee-high so you can jump it
 const SKEL_MOVE_MULT = 1.7, SKEL_ATTACK_MULT = 1.875, SKEL_JUMP_MULT = 1.3;
 const BUBBLE_SLOW_RADIUS = 12.0;   // other players this close to a SpongeBob holding the bubble launcher move at half speed
-const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0 * 0.6 * 1.2, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75 * 1.25, SPRAY_SPREAD = 0.13;
+const BURGER_SPEED = 32, BURGER_GRAVITY = 20, AIM_LOFT = 13, SPLASH_RADIUS = 6.0 * 0.6 * 1.2, SPRAY_RATE = 0.09, SPRAY_SPEED = 30, SPRAY_LIFE = 0.75 * 1.25 * 1.3, SPRAY_SPREAD = 0.13;
+// Vader's Force Pull: a round wind tunnel he shoots out where he aims; everyone inside it is dragged toward him. Length = 1.25x the farthest a burger can fly (45 degree lob: v^2/g).
+const FORCEPULL_COOLDOWN = 16.0 * CD, FORCEPULL_TIME = 5.0, FORCEPULL_RANGE = BURGER_SPEED ** 2 / BURGER_GRAVITY * 1.25, FORCEPULL_SPEED = 16, FORCEPULL_STOP = 2.2;
 
 /* ---------------- character meshes ---------------- */
 function buildSpongeMesh(parent, sy = 1.0) {
@@ -689,6 +696,40 @@ function buildSpiderMesh(parent, sy = 1.0) {
   return sp;
 }
 
+const IRON_RED = rgb(172, 22, 30), IRON_GOLD = rgb(236, 186, 52), IRON_DARK = rgb(62, 22, 24), IRON_GLOW = rgb(175, 242, 255);
+function buildIronMesh(parent, sy = 1.0) {           // Iron Man: narrow-shouldered, long-legged, small rounded head (model only, no abilities yet)
+  const m = G(parent);
+  m.scale.setScalar(IRON_SCALE);
+  const head = G(m, [0, sy + 0.12, 0]); head.scale.setScalar(0.74);                    // small head, sitting up on the neck
+  const hy = 0.07;
+  part(head, 'sphere', [0, hy + 0.36, -0.02], [0.6, 0.68, 0.64], IRON_RED);            // rounded helmet shell
+  part(head, 'sphere', [0, hy + 0.62, -0.04], [0.5, 0.2, 0.56], IRON_RED);             // brow of the helmet
+  part(head, 'sphere', [0, hy + 0.33, 0.22], [0.46, 0.52, 0.3], IRON_GOLD);            // curved gold faceplate
+  part(head, 'sphere', [0, hy + 0.1, 0.18], [0.3, 0.22, 0.3], IRON_GOLD);              // rounded chin guard
+  for (const sx of [-1, 1]) {
+    const eye = part(head, 'cube', [sx * 0.13, hy + 0.42, 0.355], [0.16, 0.05, 0.03], IRON_GLOW);   // slanted glowing eyes
+    eye.rz = -sx * 14;
+    part(head, 'sphere', [sx * 0.31, hy + 0.32, 0.02], [0.1, 0.28, 0.28], IRON_GOLD);  // round ear plates
+    part(head, 'sphere', [sx * 0.2, hy + 0.18, 0.3], [0.14, 0.14, 0.08], IRON_RED);     // cheek accents
+  }
+  for (const dy of [0.2, 0.25, 0.3]) part(head, 'cube', [0, hy + dy - 0.07, 0.345], [0.12, 0.012, 0.02], IRON_DARK);   // mouth lines
+  part(m, 'sphere', [0, sy + 0.12, 0], [0.26, 0.24, 0.26], IRON_DARK);                 // neck
+  part(m, 'sphere', [0, sy - 0.08, 0], [0.7, 0.62, 0.46], IRON_RED);                   // rounded chest
+  part(m, 'sphere', [0, sy - 0.42, 0], [0.5, 0.42, 0.36], IRON_RED);                   // tapered abdomen
+  part(m, 'sphere', [0, sy - 0.02, 0.18], [0.44, 0.36, 0.14], IRON_GOLD);              // gold chest plate
+  part(m, 'sphere', [0, sy - 0.02, 0.26], [0.24, 0.24, 0.06], IRON_GOLD);              // reactor ring
+  part(m, 'sphere', [0, sy - 0.02, 0.28], [0.17, 0.17, 0.06], IRON_GLOW);              // arc reactor
+  m.glow = part(m, 'sphere', [0, sy - 0.02, 0.36], 0.2, rgb(255, 236, 120)); m.glow.visible = false;   // unibeam charge glow
+  part(m, 'sphere', [0, sy - 0.5, 0.1], [0.42, 0.2, 0.18], IRON_GOLD);                 // gold abdomen plate
+  part(m, 'sphere', [0, sy - 0.62, 0], [0.56, 0.12, 0.4], IRON_GOLD);                  // belt
+  part(m, 'sphere', [0, sy - 0.7, 0], [0.5, 0.3, 0.32], IRON_RED);                   // hips
+  for (const sx of [-1, 1]) {
+    part(m, 'sphere', [sx * 0.4, sy + 0.14, 0], 0.3, IRON_RED);                        // round shoulders
+    part(m, 'sphere', [sx * 0.42, sy + 0.19, 0], [0.24, 0.16, 0.24], IRON_GOLD);       // gold shoulder caps
+  }
+  return m;
+}
+
 /* ---------------- held items ---------------- */
 function buildPistol(parent) {
   const steel = rgb(58, 60, 68), dark = rgb(28, 28, 32);
@@ -830,14 +871,15 @@ function buildRig(parent, kind) {
   if (kind === 'jack') { rig.model_root = buildJackMesh(parent, sy); sleeve = JACK_COAT; legCol = JACK_PANTS; rig.skin = JACK_SKIN; }
   else if (kind === 'wick') { rig.model_root = buildWickMesh(parent, sy); sleeve = legCol = WICK_SUIT; rig.skin = WICK_SKIN; }
   else if (kind === 'spiderman') { rig.model_root = buildSpiderMesh(parent, sy); sleeve = SPIDER_RED; legCol = SPIDER_BLUE; rig.skin = SPIDER_RED; }
+  else if (kind === 'ironman') { rig.model_root = buildIronMesh(parent, sy); sleeve = legCol = IRON_RED; rig.skin = IRON_GOLD; }
   else if (kind === 'warden') { rig.model_root = buildWardenMesh(parent, sy); sleeve = legCol = WARD_ARMOR; rig.skin = WARD_STEEL; }
   else if (kind === 'koolaid') { rig.model_root = buildKoolMesh(parent, sy); sleeve = legCol = KOOL_LIMB; rig.skin = KOOL_GLOVE; }
   else { rig.model_root = buildSpongeMesh(parent, sy); sleeve = legCol = rig.skin = LIMB_COLOR; }
   const root = rig.model_root;
-  const armX = kind === 'koolaid' ? 0.92 : kind === 'spiderman' ? 0.47 : (kind === 'jack' || kind === 'wick') ? 0.46 : kind === 'warden' ? 0.5 : 0.65;
+  const armX = kind === 'koolaid' ? 0.92 : kind === 'spiderman' ? 0.47 : (kind === 'jack' || kind === 'wick') ? 0.46 : kind === 'ironman' ? 0.42 : kind === 'warden' ? 0.5 : 0.65;
   rig.left_arm = G(root, [-armX, sy + 0.2, 0]);
   rig.right_arm = G(root, [armX, sy + 0.2, 0]);
-  if (kind === 'wick' || kind === 'spiderman') {
+  if (kind === 'wick' || kind === 'spiderman' || kind === 'ironman') {
     const aw = kind === 'spiderman' ? 0.13 : 0.15;
     for (const [arm, name] of [[rig.left_arm, 'left_fore'], [rig.right_arm, 'right_fore']]) {
       part(arm, 'cube', [0, -0.18, 0], [aw, 0.36, aw], sleeve);
@@ -855,13 +897,27 @@ function buildRig(parent, kind) {
     part(rig.right_arm, 'cube', [0, -0.3, 0], [0.15, 0.7, 0.15], sleeve);
   }
   if (kind === 'koolaid') for (const a of [rig.left_arm, rig.right_arm]) { part(a, 'sphere', [0, -0.72, 0], 0.34, rig.skin); part(a, 'sphere', [0, 0.02, 0], 0.4, rig.skin); }   // hand + a round shoulder joint that sits against his side
-  const [lx, lw] = kind === 'spiderman' ? [0.19, 0.16] : kind === 'koolaid' ? [0.38, 0.2] : kind === 'warden' ? [0.2, 0.14] : [0.25, 0.18];
-  const legLen = kind === 'spongebob' ? SPONGE_LEG_LEN : kind === 'koolaid' ? 0.9 : LEG_LEN, legTop = sy - 0.85 + (kind === 'koolaid' ? 0.2 : 0);
+  const [lx, lw] = kind === 'spiderman' ? [0.19, 0.16] : kind === 'koolaid' ? [0.38, 0.2] : kind === 'warden' ? [0.2, 0.14] : kind === 'ironman' ? [0.19, 0.21] : [0.25, 0.18];
+  const legLen = kind === 'spongebob' ? SPONGE_LEG_LEN : kind === 'ironman' ? 1.0 : kind === 'koolaid' ? 0.9 : LEG_LEN, legTop = sy - 0.85 + (kind === 'ironman' ? 0.3 : kind === 'koolaid' ? 0.2 : 0);
   rig.left_leg = G(root, [-lx, legTop, 0]);
   part(rig.left_leg, 'cube', [0, -legLen / 2, 0], [lw, legLen, lw], legCol);
   rig.right_leg = G(root, [lx, legTop, 0]);
   part(rig.right_leg, 'cube', [0, -legLen / 2, 0], [lw, legLen, lw], legCol);
   if (kind === 'wick') for (const l of [rig.left_leg, rig.right_leg]) part(l, 'cube', [0, -0.58, 0.04], [0.22, 0.24, 0.3], BLACK);
+  if (kind === 'ironman') {
+    for (const a of [rig.left_arm, rig.right_arm]) part(a, 'sphere', [0, -0.18, 0], [0.21, 0.34, 0.21], IRON_RED);      // upper arm armour
+    for (const f of [rig.left_fore, rig.right_fore]) {
+      part(f, 'sphere', [0, 0, 0], 0.2, IRON_GOLD);                                    // elbow joint
+      part(f, 'sphere', [0, -0.17, 0], [0.22, 0.36, 0.22], IRON_GOLD);                 // rounded gauntlet
+      part(f, 'sphere', [0, -0.36, 0.1], [0.08, 0.08, 0.05], IRON_GLOW);               // palm repulsor
+    }
+    for (const l of [rig.left_leg, rig.right_leg]) {
+      part(l, 'sphere', [0, -0.12, 0.02], [0.24, 0.44, 0.24], IRON_RED);                    // thigh armour, overlapping the hips so the leg grows out of the torso
+      part(l, 'sphere', [0, -0.36, 0.04], [0.27, 0.22, 0.27], IRON_GOLD);             // knee guard
+      part(l, 'sphere', [0, -0.64, 0.0], [0.25, 0.42, 0.25], IRON_GOLD);              // rounded shin
+      part(l, 'sphere', [0, -0.9, 0.08], [0.28, 0.24, 0.42], IRON_RED);               // boot
+    }
+  }
   if (kind === 'warden') {
     for (const a of [rig.left_arm, rig.right_arm]) part(a, 'sphere', [0, -0.68, 0], 0.17, WARD_STEEL);
     for (const l of [rig.left_leg, rig.right_leg]) part(l, 'cube', [0, -0.58, 0.04], [0.2, 0.24, 0.3], WARD_STEEL);
@@ -939,6 +995,15 @@ function headbuttPose(t) {        // [lean (deg, + = forward), forward shove, ar
   if (t < 0.75) { const u = e((t - 0.45) / 0.30); return [52 * (1 - u), 1.1 * (1 - u), 50 * (1 - u)]; }
   return null;
 }
+const HOOK_DAMAGE = 30, HOOK_PUSH = 14;
+function hookPose(t) {            // Iron Man's right hook: [right arm pitch, right arm swing, left arm pitch, body twist, lunge, right elbow (up/down), left elbow, right elbow (sideways)]. Elbow out, forearm level, fist to the side; left fist stays at his chin.
+  const e = u => u * u * (3 - 2 * u), [gru, grf] = IRON_REST_R, [glu, glf] = IRON_REST_L;
+  if (t < 0.14) { const u = e(t / 0.14); return [gru + (-80 - gru) * u, 80 * u, glu, -26 * u, -0.08 * u, grf * (1 - u), glf, -85 * u]; }
+  if (t < 0.26) { const u = (t - 0.14) / 0.12; return [-80, 80 - 115 * u, glu, -26 + 62 * u, -0.08 + 0.5 * u, 0, glf, -85]; }
+  if (t < 0.33) return [-80, -35, glu, 36, 0.42, 0, glf, -85];
+  if (t < 0.56) { const u = e((t - 0.33) / 0.23); return [-80 + (gru + 80) * u, -35 * (1 - u), glu, 36 * (1 - u), 0.42 * (1 - u), grf * u, glf, -85 * (1 - u)]; }
+  return null;
+}
 function wickJabPose(t) {
   const [gu, gf] = WICK_GUARD_R, [lu, lf] = WICK_GUARD_L;
   if (t < 0.09) { const u = t / 0.09; return [gu + (12 - gu) * u, gf + (-128 - gf) * u, lu, lf, -0.06 * u, 6 * u]; }
@@ -961,7 +1026,7 @@ function spiderStrikePose(t) {
   if (t < 0.46) { const u = (t - 0.26) / 0.20; return [mix(-90, gru, u), mix(-4, grf, u), glu, glf, mix(26, 0, u), mix(0.5, 0, u), mix(24, 14, u)]; }
   return null;
 }
-const sprinting = () => (keys.ShiftLeft || keys.ShiftRight) && !(me && (me.weapon === 'pistol' || me.weapon === 'straw'));   // no sprinting while holding Wick's pistol or Kool-Aid Man's straw
+const sprinting = () => (keys.ShiftLeft || keys.ShiftRight) && !(me && (me.weapon === 'pistol' || me.weapon === 'straw' || me.weapon === 'repulsor'));   // no sprinting while holding Wick's pistol or Kool-Aid Man's straw
 
 function animateSponge(o, moving, dt) {
   if (moving && o.grounded) {
@@ -1259,7 +1324,7 @@ class SprayBubble {
       if (v === this.owner || !v.alive) continue;
       if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < this.m.scale.x / 2 + 0.75) {
         const origin = new V3(p.x - this.vel.x, p.y, p.z - this.vel.z);
-        if (NET) sendPunch(deliverHits([[v, SPRAY_DAMAGE]], origin));
+        if (NET) sendPunch(deliverHits([[v, SPRAY_DAMAGE]], origin, undefined, 'bubble'));
         else if (v instanceof Target) v.takeDamage(SPRAY_DAMAGE, origin, SPRAY_PUSH);
         new ExplosionFx(p.clone(), 0.6, rgb(255, 170, 215), false);
         return false;
@@ -1297,7 +1362,7 @@ class StrawShot {         // a red Kool-Aid pellet: flies straight until it has 
       if (!this.visual) for (const v of allVictims()) {
         if (v === this.owner || !v.alive) continue;
         if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 0.95) {
-          if (NET) sendPunch(deliverHits([[v, STRAW_DAMAGE]], before, STRAW_PUSH));
+          if (NET) sendPunch(deliverHits([[v, STRAW_DAMAGE]], before, STRAW_PUSH, 'straw'));
           else if (v instanceof Target) v.takeDamage(STRAW_DAMAGE, before, STRAW_PUSH);
           new ExplosionFx(p.clone(), 0.5, rgb(230, 40, 55), false);
           return false;
@@ -1308,6 +1373,55 @@ class StrawShot {         // a red Kool-Aid pellet: flies straight until it has 
     return this.t < 6 && p.y > -30;
   }
   dispose() { world.remove(this.m); }
+}
+function makeChargeOrb(palm) {          // the glow that builds in the palm while the repulsor charges
+  const orb = new THREE.Mesh(GEO_S, new THREE.MeshBasicMaterial({ color: rgb(80, 170, 255), transparent: true, opacity: 0.5, depthWrite: false }));
+  orb.renderOrder = 3; orb.visible = false; palm.add(orb);
+  return orb;
+}
+function setChargeOrb(orb, u) {           // u = 0..1 charge progress, or null to hide
+  if (u === null || u === undefined) { orb.visible = false; return; }
+  orb.visible = true;
+  const c = new THREE.Color(rgb(60, 150, 255)).lerp(new THREE.Color(0xffffff), u);
+  orb.material.color.copy(c); orb.material.opacity = 0.45 + 0.55 * u;
+  orb.scale.setScalar((0.12 + 0.55 * u * u + 0.04 * Math.sin(performance.now() / 25)) * REPULSOR_SIZE);
+}
+class RepulsorBolt {       // a streak of white-blue light that crosses its whole range in REPULSOR_TIME; swept collision so nothing slips between frames
+  constructor(pos, dir, owner = null, visual = false) {
+    this.owner = owner; this.visual = visual; this.p = pos.clone(); this.dir = dir.clone().normalize(); this.dist = 0;
+    this.core = new THREE.Mesh(GEO_B, new THREE.MeshBasicMaterial({ color: rgb(255, 255, 255) }));
+    this.glow = new THREE.Mesh(GEO_B, glassMat(rgb(80, 170, 255), 0.6));
+    this.glow.renderOrder = 2; world.add(this.core); world.add(this.glow);
+    this.place(); effects.add(this);
+  }
+  place() {
+    const len = Math.max(0.2, Math.min(7, this.dist + 0.3)), mid = this.p.clone().addScaledVector(this.dir, -len / 2);
+    for (const [m, w] of [[this.core, 0.09 * REPULSOR_SIZE], [this.glow, 0.3 * REPULSOR_SIZE]]) { m.position.copy(mid); m.scale.set(w, w, len); orientZ(m, this.dir); }
+  }
+  burst(at) { new ExplosionFx(at, 0.8, rgb(170, 220, 255), false); }
+  update(dt) {
+    const from = this.p.clone(), move = Math.min(REPULSOR_SPEED * dt, REPULSOR_RANGE - this.dist);
+    let stop = move, victim = null;
+    if (!this.visual) for (const v of allVictims()) {
+      if (v === this.owner || !v.alive) continue;
+      const c = new V3(v.x, v.y + 1.0, v.z), tt = clamp(c.clone().sub(from).dot(this.dir), 0, stop);
+      if (c.distanceTo(from.clone().addScaledVector(this.dir, tt)) < 0.95 * REPULSOR_SIZE) { stop = tt; victim = v; }
+    }
+    for (let t = 0.5; t < stop; t += 1.0) {            // the ground stops it
+      const q = from.clone().addScaledVector(this.dir, t);
+      if (q.y < height(q.x, q.z)) { stop = t; victim = null; this.p.copy(q); this.burst(q); this.dist = REPULSOR_RANGE; this.done = true; break; }
+    }
+    if (this.done) return false;
+    this.p.copy(from).addScaledVector(this.dir, stop); this.dist += stop;
+    if (victim) {
+      this.burst(this.p.clone());
+      sendPunch(deliverHits([[victim, REPULSOR_DAMAGE]], from, REPULSOR_PUSH, 'repulsor'));
+      return false;
+    }
+    this.place();
+    return this.dist < REPULSOR_RANGE - 1e-6;
+  }
+  dispose() { world.remove(this.core); world.remove(this.glow); this.core.material.dispose(); }
 }
 class WebShot {
   constructor(pos, vel, owner = null, visual = false) {
@@ -1399,24 +1513,24 @@ function hitVictim(v, amount, from, push) {          // offline: apply the damag
   if (v === me) playerDamage(amount);
   else v.takeDamage(amount, from, push);
 }
-function hitEntry(v, amount, from, push) {            // online: what the server is told about a hit
+function hitEntry(v, amount, from, push, cause) {            // online: what the server is told about a hit
   if (v instanceof Target) {
     const away = new V3(v.x - from.x, 0, v.z - from.z);
     const k = away.length() > 0.01 ? away.normalize().multiplyScalar(push || (4 + amount * 0.15)) : new V3();
     return ['t', v.index, r1(amount), r2(k.x), r2(k.z)];
   }
   if (v !== me) lastHit.set(v.pid, performance.now());
-  return ['p', v === me ? NET.my_id : v.pid, r1(amount)];
+  return cause ? ['p', v === me ? NET.my_id : v.pid, r1(amount), cause] : ['p', v === me ? NET.my_id : v.pid, r1(amount)];   // cause picks the server's death message
 }
-function deliverHits(hits, from, push) {              // hits: [[victim, amount], ...]  -> online: a payload to send
-  if (NET) return hits.map(([v, a]) => hitEntry(v, a, from, push));
+function deliverHits(hits, from, push, cause) {              // hits: [[victim, amount], ...]  -> online: a payload to send
+  if (NET) return hits.map(([v, a]) => hitEntry(v, a, from, push, cause));
   for (const [v, a] of hits) hitVictim(v, a, from, push);
   return [];
 }
 function sendPunch(payload) { if (NET && payload.length) NET.send({ t: 'punch', h: payload }); }
 function killInstantly(v, from) {                     // whoever kills Wick's dog dies on the spot
   if (!v || !v.alive) return;
-  sendPunch(deliverHits([[v, v.max_hp]], from, 0));
+  sendPunch(deliverHits([[v, v.max_hp]], from, 0, 'hunted'));
   new ExplosionFx(new V3(v.x, v.y + 1, v.z), 1.4, rgb(255, 80, 60), false);
 }
 function playerDamage(amount) {
@@ -1428,6 +1542,8 @@ function playerDamage(amount) {
 function respawnPlayer() {
   const o = me;
   o.wl = null; dropAnchorWebs(o); clearWeb(o);
+  if (o.uni) endUnibeam(o);
+  o.fp_left = 0;
   o.web_t = 0;
   o.x = SPAWN_X; o.z = 0; o.y = height(SPAWN_X, 0); o.vy = 0;
   o.camPos.set(o.x, o.y + 1.6, o.z);
@@ -1442,7 +1558,7 @@ function damageAll(pos, direct) {           // burger explosion: splash falls of
     if (v === direct) hits.push([v, DIRECT_DAMAGE]);
     else if (d < SPLASH_RADIUS) hits.push([v, SPLASH_DAMAGE * (1 - 0.4 * d / SPLASH_RADIUS)]);
   }
-  return deliverHits(hits, pos);
+  return deliverHits(hits, pos, undefined, 'burger');
 }
 
 class Target {
@@ -1642,12 +1758,242 @@ class KoolShockwave {
       if (Math.abs(Math.hypot(v.x - this.cx, v.z - this.cz) - this.r) > band) continue;
       if (v.y - height(v.x, v.z) > SLAM_HEIGHT) continue;        // jumped over it
       this.hit.add(v);
-      sendPunch(deliverHits([[v, SLAM_DAMAGE]], new V3(this.cx, v.y, this.cz), SLAM_PUSH));
+      sendPunch(deliverHits([[v, SLAM_DAMAGE]], new V3(this.cx, v.y, this.cz), SLAM_PUSH, 'slam'));
       new ExplosionFx(new V3(v.x, v.y + 0.8, v.z), 1.0, rgb(255, 60, 60), false);
     }
     return true;
   }
   dispose() { world.remove(this.root); this.mat.dispose(); }
+}
+
+/* ---- Vader's Force Pull: a wind tunnel of rings and streaks rushing toward him; everyone inside is dragged in ---- */
+const pullWidth = d => (2.5 + 0.25 * d) * 0.6;                                   // the stream is narrow at Vader and widens with distance; its cross-section is a circle
+function pullDir(yaw, pitch) {                                           // where he aims (the camera looks 15 degrees below the pitch value)
+  const y = yaw * D2R, p = (pitch + 15) * D2R;
+  return new V3(Math.sin(y) * Math.cos(p), -Math.sin(p), Math.cos(y) * Math.cos(p));
+}
+function inForceCone(pl, x, y, z) {                                      // pl = { x, y, z, yaw, pitch }: inside the round stream?
+  const dir = pullDir(pl.yaw, pl.pitch), v = new V3(x - pl.x, y + 1.0 - (pl.y + 1.4), z - pl.z), along = v.dot(dir);
+  if (along < 1 || along > FORCEPULL_RANGE) return false;
+  return v.addScaledVector(dir, -along).length() < pullWidth(along);
+}
+function pullToward(v, px, pz, dt) {
+  const dx = px - v.x, dz = pz - v.z, d = Math.hypot(dx, dz), step = Math.min(FORCEPULL_SPEED * dt, d - FORCEPULL_STOP);
+  if (step > 0) { v.x = clamp(v.x + dx / d * step, -285, 285); v.z = clamp(v.z + dz / d * step, -285, 285); }
+}
+function forcePullers() {
+  const a = [];
+  if (me && me.kind === 'warden' && me.weapon === 'forcepull' && me.fp_left > 0) a.push({ x: me.x, y: me.y, z: me.z, yaw: me.yaw, pitch: me.pitch });
+  for (const r of remotes.values()) if (!r.ghost && r.kind === 'warden' && r.wp === 'forcepull' && r.fp_left > 0) a.push({ x: r.x, y: r.y, z: r.z, yaw: r.body.ry, pitch: r.pitch });
+  return a;
+}
+function forcePullTargets(dt) {                                         // the dummies get dragged in too
+  for (const pl of forcePullers()) for (const t of targets) if (t.alive && inForceCone(pl, t.x, t.y, t.z)) pullToward(t, pl.x, pl.z, dt);
+}
+const RING_GEO = new THREE.TorusGeometry(1, 0.012, 6, 40);
+const FP_RINGS = 10, FP_STREAKS = 30;
+class ForceTunnel {                                                      // round rings of wind and spiralling streaks rushing back toward Vader
+  constructor(owner, isMe) {
+    this.owner = owner; this.isMe = isMe; this.t = 0;
+    this.root = G(world);
+    this.rings = [];
+    for (let i = 0; i < FP_RINGS; i++) {
+      const m = new THREE.Mesh(RING_GEO, new THREE.MeshBasicMaterial({ color: rgb(205, 218, 242), transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+      m.renderOrder = 2; this.root.add(m); this.rings.push(m);
+    }
+    this.smat = new THREE.MeshBasicMaterial({ color: rgb(230, 238, 255), transparent: true, opacity: 0.55, depthWrite: false });
+    this.streaks = [];
+    for (let i = 0; i < FP_STREAKS; i++) {
+      const m = new THREE.Mesh(GEO_B, this.smat); m.renderOrder = 2;
+      m.phi = i / FP_STREAKS * Math.PI * 2; m.ph = (i * 0.381) % 1; this.root.add(m); this.streaks.push(m);
+    }
+    effects.add(this); this.place();
+  }
+  place() {
+    const o = this.owner, yaw = this.isMe ? o.yaw : o.body.ry, dir = pullDir(yaw, o.pitch), R = FORCEPULL_RANGE;
+    const right = new V3(Math.cos(yaw * D2R), 0, -Math.sin(yaw * D2R)), up = new V3().crossVectors(dir, right).normalize();
+    const origin = new V3(o.x, o.y + 1.4, o.z);
+    this.rings.forEach((m, i) => {
+      const u = (((i / FP_RINGS - this.t * 0.45) % 1) + 1) % 1, d = 1 + u * (R - 1);
+      m.position.copy(origin).addScaledVector(dir, d); orientZ(m, dir); m.scale.setScalar(pullWidth(d));
+      m.material.opacity = 0.5 * clamp(Math.min(u / 0.1, (1 - u) / 0.15), 0, 1);
+    });
+    for (const m of this.streaks) {
+      const u = (((m.ph - this.t * 0.9) % 1) + 1) % 1, d = 1 + u * (R - 1), r = pullWidth(d) * 0.9, ang = m.phi + d * 0.1 + this.t * 2.2;
+      m.position.copy(origin).addScaledVector(dir, d).addScaledVector(right, Math.cos(ang) * r).addScaledVector(up, Math.sin(ang) * r);
+      orientZ(m, dir);
+      m.scale.set(0.05, 0.05, 0.01 + 3.5 * clamp(Math.min(u / 0.1, (1 - u) / 0.1), 0, 1));
+    }
+  }
+  update(dt) {
+    this.t += dt; const o = this.owner;
+    const on = this.isMe ? (o === me && o.fp_left > 0 && o.weapon === 'forcepull') : (remotes.get(o.pid) === o && o.fp_left > 0 && o.wp === 'forcepull' && !o.ghost);
+    if (!on) return false;
+    this.place(); return true;
+  }
+  dispose() { world.remove(this.root); for (const r of this.rings) r.material.dispose(); this.smat.dispose(); }
+}
+function startForcePull(o) {
+  o.fp_left = FORCEPULL_TIME; o.pull_cd = FORCEPULL_COOLDOWN;           // the cooldown starts the moment he uses it, even if he cancels early
+  new ForceTunnel(o, true);
+  if (NET) NET.send({ t: 'fx', k: 'fpull' });
+}
+
+/* ---- Iron Man's Unibeam: penguin pose, a slow 3 s climb, chest back then forward, a 3 s yellow beam, a slow float down ---- */
+const IRON_STAND_H = IRON_SCALE * 2.7;                                   // roughly how tall he stands
+const UNI_ALT = IRON_STAND_H * 4;                                        // he climbs to 4x his normal height
+const UNI_RISE = 3.0, UNI_PULL = 0.6, UNI_THRUST = 0.15, UNI_BEAM = 3.0, UNI_FALL = 4.0;
+const UNI_T_PULL = UNI_RISE, UNI_T_THRUST = UNI_RISE + UNI_PULL, UNI_T_BEAM = UNI_T_THRUST + UNI_THRUST, UNI_T_FALL = UNI_T_BEAM + UNI_BEAM, UNI_T_END = UNI_T_FALL + UNI_FALL;
+const UNI_COOLDOWN = 30 * CD;
+const UNI_LENGTH = 1500;                                                 // infinite range: it only stops when it meets the ground
+const UNI_RADIUS = pullWidth(FORCEPULL_RANGE / 2) * 2 / 3;                // still 2/3 of the Force Pull's width
+const UNI_TICK = SPRAY_RATE, UNI_DAMAGE = SPRAY_DAMAGE * 2 * 0.75, UNI_PUSH = 3;   // 1.5x SpongeBob's bubble gun (double, then 3/4 of that): same rate, 6 per tick
+const UNI_BEAM_GEO = new THREE.CylinderGeometry(0.5, 0.5, 1, 28, 1, true).rotateX(Math.PI / 2);   // axis along +z so orientZ can aim it
+const UNI_YELLOW = rgb(255, 214, 40), UNI_CORE = rgb(255, 250, 200);
+const uniAlt = t => t < UNI_T_FALL ? UNI_ALT * smooth01(t / UNI_RISE) : UNI_ALT * (1 - smooth01((t - UNI_T_FALL) / UNI_FALL));
+function smooth01(u) { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); }
+function startUnibeam(o) {
+  if (o.uni_cd > 0 || o.uni || !o.grounded || o.punch_t !== null) return;
+  o.uni = { t: 0, beam: null }; o.uni_cd = UNI_COOLDOWN;
+  if (NET) NET.send({ t: 'fx', k: 'unistart' });
+}
+function endUnibeam(o) {
+  if (!o.uni) return;
+  o.uni = null;
+  const g = o.model_root && o.model_root.glow; if (g) g.visible = false;
+}
+const mr_of = o => o.model_root;
+function uniPose(o, mr) {                                                // the penguin pose and body lean for the current moment of the move
+  const t = o.uni.t, k = smooth01(t / 0.35) * (1 - smooth01((t - (UNI_T_END - 0.5)) / 0.5));
+  for (const [arm, fore, sg] of [[o.left_arm, o.left_fore, 1], [o.right_arm, o.right_fore, -1]]) {   // flippers: arms angled out, hands flat and level with the ground
+    arm.rx = lerp(arm.rx, 0, k); arm.ry = lerp(arm.ry, 0, k); arm.rz = sg * 32 * k;
+    fore.rx = lerp(fore.rx, 0, k); fore.rz = sg * 58 * k;
+  }
+  o.left_leg.rx = lerp(o.left_leg.rx, 0, k); o.right_leg.rx = lerp(o.right_leg.rx, 0, k);
+  let lean = 0, lunge = 0;
+  if (t >= UNI_T_PULL && t < UNI_T_THRUST) { const u = smooth01((t - UNI_T_PULL) / UNI_PULL); lean = -24 * u; lunge = -0.12 * u; }                 // chest pulled back
+  else if (t >= UNI_T_THRUST && t < UNI_T_BEAM) { const u = smooth01((t - UNI_T_THRUST) / UNI_THRUST); lean = -24 + 42 * u; lunge = -0.12 + 0.3 * u; }   // slammed forward
+  else if (t >= UNI_T_BEAM && t < UNI_T_FALL) { lean = 18; lunge = 0.18; }
+  else if (t >= UNI_T_FALL) { const u = smooth01((t - UNI_T_FALL) / 1.0); lean = 18 * (1 - u); lunge = 0.18 * (1 - u); }
+  mr.rx = lerp(mr.rx, lean, Math.max(k, 0.6)); mr.position.z = lerp(mr.position.z, lunge, Math.max(k, 0.6));
+  const g = mr.glow;                                                      // glow in his chest builds up during the climb and the pull-back
+  if (g) {
+    const c = t < UNI_T_BEAM ? smooth01((t - 1.2) / (UNI_T_THRUST - 1.2)) : t < UNI_T_FALL ? 1 : 0;
+    g.visible = c > 0.01; g.scale.setScalar((0.15 + 1.1 * c) * (1 + 0.08 * Math.sin(performance.now() / 30)));
+  }
+}
+const FLAME_GEO = new THREE.ConeGeometry(0.5, 1, 12, 1, true).rotateX(Math.PI);   // wide at the nozzle, tip pointing down
+class BoosterFx {                                                         // thrusters in both hands and both feet, blasting down while he climbs and floats down
+  constructor(owner) {
+    this.owner = owner; this.flames = [];
+    const pts = [[owner.left_fore, [0, -0.42, 0.04], 0.34, 1.5], [owner.right_fore, [0, -0.42, 0.04], 0.34, 1.5],
+                 [owner.left_leg, [0, -1.02, 0.08], 0.5, 2.3], [owner.right_leg, [0, -1.02, 0.08], 0.5, 2.3]];
+    for (const [parent, off, w, len] of pts) {
+      const outer = new THREE.Mesh(FLAME_GEO, new THREE.MeshBasicMaterial({ color: rgb(255, 150, 40), transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+      const inner = new THREE.Mesh(FLAME_GEO, new THREE.MeshBasicMaterial({ color: rgb(205, 235, 255), transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide }));
+      outer.renderOrder = 3; inner.renderOrder = 4; world.add(outer); world.add(inner);
+      this.flames.push({ pt: G(parent, off), outer, inner, w, len });
+    }
+    effects.add(this);
+  }
+  update(dt) {
+    const o = this.owner;
+    if (!o.uni || !o.model_root.parent) return false;
+    const t = o.uni.t;
+    const HOVER = 0.35;                                                   // lighter thrust that holds him up at the top
+    const s = t < UNI_T_PULL ? smooth01(t / 0.3) * (1 - (1 - HOVER) * smooth01((t - (UNI_T_PULL - 0.4)) / 0.4))                // climbing, easing down to the hover level
+            : t < UNI_T_FALL ? HOVER                                                                                           // hovering and firing
+            : (HOVER + (0.65 - HOVER) * smooth01((t - UNI_T_FALL) / 0.3)) * (1 - smooth01((t - (UNI_T_END - 0.5)) / 0.5));    // floating down
+    for (const f of this.flames) {
+      f.outer.visible = f.inner.visible = s > 0.02;
+      if (s <= 0.02) continue;
+      const p = authorPos(f.pt), flick = 0.8 + Math.random() * 0.4, len = f.len * s * flick, w = f.w * (0.7 + 0.3 * s) * (0.9 + Math.random() * 0.2);
+      for (const [m, k] of [[f.outer, 1], [f.inner, 0.55]]) {
+        m.position.set(p.x, p.y - len * k / 2, p.z); m.scale.set(w * k, len * k, w * k);
+      }
+    }
+    return true;
+  }
+  dispose() { for (const f of this.flames) for (const m of [f.outer, f.inner]) { world.remove(m); m.material.dispose(); } }
+}
+function uniStep(o, dt) {                                                 // advances the clock; opens the beam when the push comes
+  if (!o.uni) return;
+  if (!o.uni.boost) o.uni.boost = new BoosterFx(o);
+  o.uni.t += dt;
+  if (o.uni.t >= UNI_T_END) { endUnibeam(o); return; }
+  if (!o.uni.beam && o.uni.t >= UNI_T_BEAM && o.uni.t < UNI_T_FALL) o.uni.beam = new UniBeam(o, o === me);
+}
+class UniBeam {
+  constructor(owner, isMe) {
+    this.owner = owner; this.isMe = isMe; this.t = 0; this.tick = 0; this.fx = 0; this.ring = 0;
+    this.core = new THREE.Mesh(UNI_BEAM_GEO, new THREE.MeshBasicMaterial({ color: UNI_CORE, transparent: true, opacity: 1, depthWrite: false }));
+    this.mid = new THREE.Mesh(UNI_BEAM_GEO, new THREE.MeshBasicMaterial({ color: UNI_YELLOW, transparent: true, opacity: 0.82, depthWrite: false }));
+    this.glow = new THREE.Mesh(UNI_BEAM_GEO, new THREE.MeshBasicMaterial({ color: UNI_YELLOW, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }));
+    this.core.renderOrder = 4; this.mid.renderOrder = 3; this.glow.renderOrder = 2;
+    this.hitSpot = new THREE.Mesh(GEO_S, new THREE.MeshBasicMaterial({ color: UNI_CORE, transparent: true, opacity: 0.8, depthWrite: false }));
+    this.hitSpot.renderOrder = 4; this.hitSpot.visible = false;
+    world.add(this.core); world.add(this.mid); world.add(this.glow); world.add(this.hitSpot);
+    effects.add(this); this.aim();
+  }
+  aim() {
+    const o = this.owner, yaw = this.isMe ? o.yaw : o.body.ry, dir = pullDir(yaw, o.pitch);
+    const g = o.model_root.glow, origin = g ? authorPos(g) : new V3(o.x, o.y + 1.8, o.z);
+    let len = UNI_LENGTH, ground = null;
+    for (let d = 1; d < UNI_LENGTH; d += d < 80 ? 0.7 : 2.5) {           // stops where it meets the ground
+      const q = origin.clone().addScaledVector(dir, d);
+      if (q.y < height(q.x, q.z)) { len = d; ground = q; ground.y = height(q.x, q.z); break; }
+    }
+    this.origin = origin; this.dir = dir; this.len = len; this.ground = ground;
+  }
+  segDist(c) {                                                            // distance from a point to the beam's axis
+    const v = c.clone().sub(this.origin), along = clamp(v.dot(this.dir), 0, this.len);
+    return v.sub(this.dir.clone().multiplyScalar(along)).length();
+  }
+  update(dt) {
+    const o = this.owner;
+    if (!o.uni || o.uni.t < UNI_T_BEAM || o.uni.t >= UNI_T_FALL) return false;
+    this.t += dt; this.aim();
+    const pulse = 1 + 0.06 * Math.sin(this.t * 40), grow = Math.min(1, this.t / 0.12), shrink = Math.min(1, (UNI_BEAM - this.t) / 0.25);
+    const kk = Math.max(0.02, grow * Math.max(0, shrink)), mid = this.origin.clone().addScaledVector(this.dir, this.len / 2);
+    for (const [m, r] of [[this.core, UNI_RADIUS * 0.4], [this.mid, UNI_RADIUS * 0.72], [this.glow, UNI_RADIUS * pulse]]) {
+      m.position.copy(mid); orientZ(m, this.dir); m.scale.set(r * 2 * kk, r * 2 * kk, this.len);
+    }
+    if (this.ground) {
+      this.hitSpot.visible = true; this.hitSpot.position.copy(this.ground); this.hitSpot.position.y += 0.3;
+      this.hitSpot.scale.set(UNI_RADIUS * 1.6 * kk, 0.7, UNI_RADIUS * 1.6 * kk);
+      this.fx -= dt; this.ring -= dt;
+      while (this.fx <= 0) {                                              // flashes and sparks where it hits the ground
+        this.fx += 0.07; const a = Math.random() * Math.PI * 2, r = Math.random() * UNI_RADIUS;
+        new ExplosionFx(new V3(this.ground.x + Math.cos(a) * r, this.ground.y + 0.4, this.ground.z + Math.sin(a) * r), uni(1.2, 2.4), UNI_YELLOW, false);
+      }
+      if (this.ring <= 0) { this.ring = 0.22; new GroundRing(this.ground, UNI_RADIUS * 1.9); }
+    } else this.hitSpot.visible = false;
+    if (this.isMe) {
+      this.tick += dt;
+      while (this.tick >= UNI_TICK) {
+        this.tick -= UNI_TICK;
+        for (const v of allVictims()) {
+          if (v === o || !v.alive) continue;
+          if (this.segDist(new V3(v.x, v.y + 1.0, v.z)) < UNI_RADIUS + 0.8) sendPunch(deliverHits([[v, UNI_DAMAGE]], this.origin, UNI_PUSH, 'unibeam'));
+        }
+      }
+    }
+    return true;
+  }
+  dispose() { for (const m of [this.core, this.mid, this.glow, this.hitSpot]) { world.remove(m); m.material.dispose(); } if (this.owner.uni && this.owner.uni.beam === this) this.owner.uni.beam = null; }
+}
+const GROUND_RING_GEO = new THREE.TorusGeometry(1, 0.07, 8, 48);
+class GroundRing {                                                        // a yellow shockwave ring racing out along the ground
+  constructor(pos, maxR) {
+    this.max = maxR; this.t = 0;
+    this.m = new THREE.Mesh(GROUND_RING_GEO, new THREE.MeshBasicMaterial({ color: UNI_YELLOW, transparent: true, opacity: 0.9, depthWrite: false }));
+    this.m.position.set(pos.x, pos.y + 0.25, pos.z); this.m.rotation.x = Math.PI / 2; this.m.renderOrder = 3; world.add(this.m); effects.add(this);
+  }
+  update(dt) {
+    this.t += dt; const u = this.t / 0.5; if (u >= 1) return false;
+    this.m.scale.setScalar(0.5 + this.max * u); this.m.material.opacity = 0.9 * (1 - u); return true;
+  }
+  dispose() { world.remove(this.m); this.m.material.dispose(); }
 }
 
 /* ---- Jack's ghost ship ---- */
@@ -1696,7 +2042,7 @@ class GhostShip {
       if (Math.abs(fwd) < 2.8 && Math.abs(side) < 2.0 && Math.abs(v.y - p.y) < 3.5) {
         this.hit.add(v);
         const push = this.side.clone().multiplyScalar(side >= 0 ? 1 : -1);
-        sendPunch(deliverHits([[v, SHIP_DAMAGE]], new V3(v.x - push.x, v.y, v.z - push.z), SHIP_PUSH));
+        sendPunch(deliverHits([[v, SHIP_DAMAGE]], new V3(v.x - push.x, v.y, v.z - push.z), SHIP_PUSH, 'ship'));
         new ExplosionFx(new V3(v.x, v.y + 1, v.z), 1.2, rgb(150, 225, 255), false);
       }
     }
@@ -1772,7 +2118,7 @@ class Dog {
     this.smack_cd = DOG_SMACK_RATE; this.lunge = 1.0;
     const t = this.target;
     new ExplosionFx(new V3(t.x, t.y + 1.0, t.z), 0.5, 0xffffff, false);
-    sendPunch(deliverHits([[t, DOG_SMACK_DAMAGE]], new V3(this.x, this.y, this.z), 1.0));
+    sendPunch(deliverHits([[t, DOG_SMACK_DAMAGE]], new V3(this.x, this.y, this.z), 1.0, 'dog'));
   }
   takeDamage(amount, from = null, attacker = null) {     // other players' burger splash can hurt the dog
     if (!this.alive) return;
@@ -1877,9 +2223,9 @@ function blowWhistle(o) {
 function doPunchHit(o, dmgOverride, push) {
   const f = new V3(Math.sin(o.yaw * D2R), 0, Math.cos(o.yaw * D2R));
   const hitPos = new V3(o.x, o.y + 1.2, o.z).addScaledVector(f, 1.6);
-  const jack = o.kind === 'jack', kool = o.kind === 'koolaid', reach = jack ? SWORD_REACH : kool ? 3.4 : o.kind === 'warden' ? (o.weapon === 'saber' ? 3.6 * SABER_RANGE : 3.6) : o.kind === 'spiderman' ? 2.9 : 2.8, cone = jack ? 0.2 : 0.4;
+  const jack = o.kind === 'jack', kool = o.kind === 'koolaid', reach = jack ? SWORD_REACH : kool ? 3.4 : o.kind === 'warden' ? (o.weapon === 'saber' ? 3.6 * SABER_RANGE : 3.6) : o.kind === 'spiderman' ? 2.9 : o.kind === 'ironman' ? 3.3 : 2.8, cone = jack ? 0.2 : 0.4;
   const dmg = dmgOverride ?? (jack ? SWORD_DAMAGE : PUNCH_DAMAGE);
-  const fx = (o.kind === 'warden' && o.weapon === 'saber') ? rgb(255, 70, 60) : kool ? rgb(255, 235, 90) : jack ? rgb(225, 235, 255) : o.kind === 'wick' ? rgb(235, 235, 240) : o.kind === 'spiderman' ? rgb(255, 110, 100) : rgb(255, 230, 60);
+  const fx = (o.kind === 'warden' && o.weapon === 'saber') ? rgb(255, 70, 60) : kool ? rgb(255, 235, 90) : jack ? rgb(225, 235, 255) : o.kind === 'wick' ? rgb(235, 235, 240) : o.kind === 'spiderman' ? rgb(255, 110, 100) : o.kind === 'ironman' ? rgb(255, 215, 110) : rgb(255, 230, 60);
   const origin = new V3(o.x, o.y, o.z), hits = [];
   for (const t of [...remotes.values(), ...targets]) {
     if (!t.alive) continue;
@@ -1889,7 +2235,7 @@ function doPunchHit(o, dmgOverride, push) {
       new ExplosionFx(hitPos, 0.8, fx, false);
     }
   }
-  if (hits.length) sendPunch(deliverHits(hits, origin, push));
+  if (hits.length) sendPunch(deliverHits(hits, origin, push, jack ? 'sword' : (o.kind === 'warden' && o.weapon === 'saber') ? 'saber' : null));
 }
 
 /* ---- Spider-Man's web launch flight ---- */
@@ -1920,7 +2266,7 @@ function updateLaunch(o, dt) {             // thrown forward: covers 2/3 of the 
       new ExplosionFx(centre.clone().addScaledVector(w.dir, 0.8), 0.9, rgb(255, 110, 100), false);
     }
   }
-  if (hits.length) sendPunch(deliverHits(hits, new V3(o.x, o.y, o.z), 18));
+  if (hits.length) sendPunch(deliverHits(hits, new V3(o.x, o.y, o.z), 18, 'launch'));
   if (u >= 1) { o.wl = null; o.spin.ry = 0; }
 }
 
@@ -1930,9 +2276,10 @@ function updateLaunch(o, dt) {             // thrown forward: covers 2/3 of the 
 const WEAPONS = {
   spongebob: ['fist', 'gun', 'bubbler'], jack: ['sword', 'compass', 'medallion'],
   wick: ['fist', 'pistol', 'whistle'], spiderman: ['fist', 'webshooter', 'weblaunch'],
-  koolaid: ['headbutt', 'slam', 'straw'], warden: ['kick', 'saber'],
+  koolaid: ['headbutt', 'slam', 'straw'], warden: ['kick', 'saber', 'forcepull'],
+  ironman: ['hook', 'repulsor', 'unibeam'],
 };
-const WEAPON_NAMES = { gun: 'Burger Gun', bubbler: 'Bubble Launcher', sword: 'Cutlass', compass: 'Compass', medallion: 'Skeleton Medallion', whistle: 'Whistle', fist: 'Fists', pistol: 'Pistol', none: 'No abilities yet', kick: 'Spartan Kick', saber: 'Lightsaber', headbutt: 'Headbutt', slam: 'Butt Slam', straw: 'Pink Straw' };
+const WEAPON_NAMES = { gun: 'Burger Gun', bubbler: 'Bubble Launcher', sword: 'Cutlass', compass: 'Compass', medallion: 'Skeleton Medallion', whistle: 'Whistle', fist: 'Fists', pistol: 'Pistol', none: 'No abilities yet', hook: 'Right Hook', repulsor: 'Repulsor', unibeam: 'Unibeam', kick: 'Spartan Kick', saber: 'Lightsaber', headbutt: 'Headbutt', slam: 'Butt Slam', straw: 'Pink Straw', forcepull: 'Force Pull' };
 const hudWeapon = document.getElementById('weapon'), hudMsg = document.getElementById('msg'), crossEl = document.getElementById('cross');
 let msgTimer = 0;
 const setWeaponText = t => { if (hudWeapon.textContent !== t) hudWeapon.textContent = t; };
@@ -1955,7 +2302,7 @@ function makePlayer(kind) {
   // shadow
   o.shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 20), getMat(rgb(38, 105, 34)));
   o.shadow.rotation.x = -Math.PI / 2; world.add(o.shadow);
-  o.bar = makeBar(1.0, 0.12, 3.0 - (kind === 'spongebob' ? SPONGE_LEG_CUT : 0), o.root);
+  o.bar = makeBar(1.0, 0.12, 3.0 - (kind === 'spongebob' ? SPONGE_LEG_CUT : kind === 'ironman' ? -0.45 : 0), o.root);
   // weapons
   o.weapons = WEAPONS[kind];
   if (kind === 'spongebob') {
@@ -1972,11 +2319,15 @@ function makePlayer(kind) {
   } else if (kind === 'spiderman') {
     o.nozzles = [G(o.left_fore, [0, -0.42, 0]), G(o.right_fore, [0, -0.42, 0])];
     Object.assign(o, { web_cd: 0, web_recoil: 0, wl: null, wl_cd: 0 });
+  } else if (kind === 'ironman') {
+    o.palm = G(o.right_fore, [0, -0.42, 0.12]);                 // where the repulsor beam leaves his hand
+    o.charge_orb = makeChargeOrb(o.palm);
+    Object.assign(o, { repulsor_cd: 0, rep_recoil: 0, rep_charge: null, uni: null, uni_cd: 0 });
   } else if (kind === 'koolaid') {
     o.straw = buildStraw(o.model_root, sy);
     Object.assign(o, { slam: null, slam_cd: 0, straw_cd: 0, burst: null });
   } else if (kind === 'warden') {
-    Object.assign(o, { saber_cd: 0 });
+    Object.assign(o, { saber_cd: 0, pull_cd: 0, fp_left: 0 });
   } else if (kind === 'jack') {
     Object.assign(o, { ship_cd: 0, point_t: null, med_cd: 0, med_t: null, skeleton: false, smoke_for: 0, smoke_t: 0, med_smoking: false });
   }
@@ -1996,11 +2347,11 @@ const medFlipping = o => o.med_t !== null && o.med_t !== undefined && o.med_t < 
 
 function setWeapon(o, w, force = false) {
   if (!o.weapons.includes(w)) return;
-  if (!force && (medFlipping(o) || o.wl)) return;
+  if (!force && (medFlipping(o) || o.wl || o.uni)) return;
   o.weapon = w; o.punch_t = null; o.hud_label = '';
   if (o.kind === 'jack') { o.rig.sword.visible = w === 'sword'; o.rig.compass.visible = w === 'compass'; o.rig.medallion.visible = w === 'medallion'; }
   else if (o.kind === 'wick') { o.pistol.root.visible = w === 'pistol'; o.whistle_prop.visible = w === 'whistle'; }
-  else if (o.kind === 'warden') o.rig.saber.visible = w === 'saber';
+  else if (o.kind === 'warden') { o.rig.saber.visible = w === 'saber'; if (w !== 'forcepull') o.fp_left = 0; }   // switching away ends the pull early
   else if (o.kind === 'spongebob') {
     const g = w === 'gun', b = w === 'bubbler';
     o.gun.visible = g; o.bubbler.visible = b;
@@ -2055,14 +2406,17 @@ function useWeapon(o) {
   if (w === 'headbutt' || w === 'kick') { if (o.punch_t === null && !o.slam) { o.punch_t = 0; o.punch_hit = false; } }
   else if (w === 'slam') { if (o.grounded && !o.slam && o.slam_cd <= 0 && o.punch_t === null) { o.vy = 10.5; o.grounded = false; o.slam = { stage: 'air', t: 0 }; o.slam_cd = SLAM_COOLDOWN; } }
   else if (w === 'straw') { if (o.straw_cd <= 0 && !o.burst && !o.slam && o.punch_t === null) { o.burst = { left: 3, t: 0 }; o.straw_cd = STRAW_COOLDOWN; } }
-  else if (w === 'fist' || w === 'sword') { if (o.punch_t === null) { o.punch_t = 0; o.punch_hit = false; } }
+  else if (w === 'fist' || w === 'sword' || w === 'hook') { if (o.punch_t === null) { o.punch_t = 0; o.punch_hit = false; } }
   else if (w === 'saber') { if (o.punch_t === null && o.saber_cd <= 0) { o.punch_t = 0; o.punch_hit = false; o.saber_cd = SABER_COOLDOWN; } }   // cooldown starts the moment he swings
   else if (w === 'webshooter') fireWeb(o);
   else if (w === 'weblaunch') startWebLaunch(o);
   else if (w === 'compass') { if (o.ship_cd <= 0 && o.punch_t === null) { o.point_t = 0; o.ship_fired = false; o.ship_cd = SHIP_COOLDOWN; if (NET) NET.send({ t: 'fx', k: 'point' }); } }
   else if (w === 'medallion') { if (o.med_cd <= 0 && o.med_t === null && o.punch_t === null) { o.med_t = 0; o.med_cd = MED_COOLDOWN; if (NET) NET.send({ t: 'fx', k: 'med' }); } }
   else if (w === 'pistol') firePistol(o);
+  else if (w === 'repulsor') startRepulsorCharge(o);
+  else if (w === 'unibeam') startUnibeam(o);
   else if (w === 'whistle') blowWhistle(o);
+  else if (w === 'forcepull') { if (o.pull_cd <= 0 && !(o.fp_left > 0)) startForcePull(o); }
   else if (w === 'gun') { if (o.gun_loaded) fireBurger(o); }
 }
 const aimPoint = dist => camAuthorPos.clone().addScaledVector(camFwd, dist);
@@ -2073,6 +2427,20 @@ function fireStraw(o) {
   new StrawShot(start, vel, o);
   new ExplosionFx(start, 0.3, rgb(235, 60, 70), false);
   if (NET) NET.send({ t: 'fx', k: 'straw', p: [r2(start.x), r2(start.y), r2(start.z)], v: [r2(vel.x), r2(vel.y), r2(vel.z)] });
+}
+function startRepulsorCharge(o) {
+  if (o.repulsor_cd > 0 || o.rep_charge !== null || o.punch_t !== null) return;
+  o.rep_charge = 0;
+  if (NET) NET.send({ t: 'fx', k: 'repcharge' });
+}
+function fireRepulsor(o) {
+  if (o.repulsor_cd > 0 || o.punch_t !== null) return;
+  o.repulsor_cd = REPULSOR_COOLDOWN; o.rep_recoil = 1.0;
+  const start = authorPos(o.palm);
+  const dir = aimPoint(45).sub(start).normalize();
+  new RepulsorBolt(start, dir, o);
+  new ExplosionFx(start, 0.45, rgb(190, 230, 255), false);
+  if (NET) NET.send({ t: 'fx', k: 'repulsor', p: [r2(start.x), r2(start.y), r2(start.z)], v: [r2(dir.x), r2(dir.y), r2(dir.z)] });
 }
 function fireBurger(o) {
   o.gun_loaded = false; o.gun.burger_viz.visible = false; o.recoil = 0.25;
@@ -2147,7 +2515,7 @@ function firePistol(o) {
   new ExplosionFx(start, 0.45, rgb(255, 220, 120), false);
   if (hit < PISTOL_RANGE) new ExplosionFx(end, 0.7, rgb(255, 240, 200), false);
   if (NET) NET.send({ t: 'fx', k: 'shot', p: [r2(start.x), r2(start.y), r2(start.z)], e: [r2(end.x), r2(end.y), r2(end.z)], i: best ? 1 : 0 });
-  if (best) sendPunch(deliverHits([[best, PISTOL_DAMAGE]], new V3(o.x, o.y, o.z), PISTOL_PUSH));
+  if (best) sendPunch(deliverHits([[best, PISTOL_DAMAGE]], new V3(o.x, o.y, o.z), PISTOL_PUSH, 'pistol'));
   if (o.ammo <= 0) o.reload_t = 0;
 }
 
@@ -2234,6 +2602,11 @@ function updateWeapons(o, dt) {
       if (!p) { o.punch_t = null; mr.ry = 0; }
       else { o.right_arm.rx = p[0]; o.right_fore.rx = p[1]; o.left_arm.rx = p[2]; o.left_fore.rx = p[3]; mr.ry = p[4]; mr.rx = p[6]; mr.position.z = p[5];
         if (t >= 0.14 && !o.punch_hit) { o.punch_hit = true; doPunchHit(o, SPIDER_STRIKE_DAMAGE); } }
+    } else if (k === 'ironman') {
+      const p = hookPose(t);
+      if (!p) o.punch_t = null;
+      else { o.right_arm.rx = p[0]; o.right_arm.ry = p[1]; o.left_arm.rx = p[2]; mr.ry = p[3]; mr.position.z = p[4]; o.right_fore.rx = p[5]; o.left_fore.rx = p[6]; o.right_fore.rz = p[7];
+        if (t >= 0.2 && !o.punch_hit) { o.punch_hit = true; doPunchHit(o, HOOK_DAMAGE, HOOK_PUSH); } }
     } else {
       const p = punchPose(t);
       if (!p) o.punch_t = null;
@@ -2244,6 +2617,7 @@ function updateWeapons(o, dt) {
   if (o.punch_t === null) {
     o.left_arm.scale.y = 1; o.right_arm.scale.y = 1;
     mr.position.z = lerp(mr.position.z, 0, k15);
+    if (k === 'ironman') { o.right_arm.ry = lerp(o.right_arm.ry, 0, k15); mr.ry = lerp(wrap(mr.ry), 0, k15); }   // settle after a hook
   }
 
   if (k === 'jack') {
@@ -2327,12 +2701,42 @@ function updateWeapons(o, dt) {
 
   if (k === 'warden') {
     if (o.saber_cd > 0) o.saber_cd = Math.max(0, o.saber_cd - dt);
+    if (o.pull_cd > 0) o.pull_cd = Math.max(0, o.pull_cd - dt);
+    if (o.fp_left > 0) o.fp_left = Math.max(0, o.fp_left - dt);
+    if (o.weapon === 'forcepull') {
+      if (o.fp_left > 0) o.right_arm.rx = -85 + clamp(o.pitch, -45, 45) * 0.9 + Math.sin(performance.now() / 60) * 1.5;   // arm thrust out, hand trembling with the effort
+      setWeaponText('Force Pull   ' + (o.fp_left > 0 ? `Pulling ${o.fp_left.toFixed(1)}s` : o.pull_cd > 0 ? o.pull_cd.toFixed(1) + 's' : 'Ready'));
+    }
     if (o.weapon === 'saber') {
       if (mouseHeld && o.saber_cd <= 0) useWeapon(o);                   // hold click = a swing every 0.6 s
       setWeaponText('Lightsaber   ' + (o.saber_cd > 0 ? o.saber_cd.toFixed(1) + 's' : 'Ready'));
     }
   }
 
+  if (k === 'ironman') {
+    if (o.uni_cd > 0) o.uni_cd = Math.max(0, o.uni_cd - dt);
+    uniStep(o, dt);
+    if (o.weapon === 'unibeam') setWeaponText('Unibeam   ' + (o.uni ? 'Firing' : o.uni_cd > 0 ? Math.ceil(o.uni_cd) + 's' : 'Ready'));
+    if (o.repulsor_cd > 0) o.repulsor_cd = Math.max(0, o.repulsor_cd - dt);
+    o.rep_recoil = Math.max(0, o.rep_recoil - dt * 9);
+    if (o.rep_charge !== null) {                                       // charging: the palm glows brighter until the shot goes off
+      if (o.weapon !== 'repulsor') { o.rep_charge = null; setChargeOrb(o.charge_orb, null); }
+      else {
+        o.rep_charge += dt;
+        if (o.rep_charge >= REPULSOR_CHARGE) { o.rep_charge = null; setChargeOrb(o.charge_orb, null); fireRepulsor(o); }
+        else setChargeOrb(o.charge_orb, o.rep_charge / REPULSOR_CHARGE);
+      }
+    }
+    if (o.weapon === 'repulsor') {
+      if (mouseHeld && o.repulsor_cd <= 0 && o.rep_charge === null) useWeapon(o);   // hold click = charge, fire, charge again
+      if (o.punch_t === null) {                                        // arm out straight at the crosshair, like the pistol
+        const pitch = clamp(o.pitch, -45, 45), rec = o.rep_recoil;
+        o.right_arm.rx = -88 + pitch * 0.9 - rec * 10; o.right_fore.rx = -6 - rec * 8; o.right_arm.ry = -4;
+        mr.position.z = -0.06 * rec;
+      }
+      setWeaponText('Repulsor   ' + (o.rep_charge !== null ? `Charging ${Math.max(0, REPULSOR_CHARGE - o.rep_charge).toFixed(1)}s` : o.repulsor_cd <= 0 ? 'Ready' : o.repulsor_cd.toFixed(1) + 's'));
+    }
+  }
   if (k === 'koolaid') {
     if (o.slam_cd > 0) o.slam_cd = Math.max(0, o.slam_cd - dt);
     const sl = o.slam;
@@ -2446,7 +2850,7 @@ function updatePlayer(o, dt) {
   const sy = Math.sin(o.yaw * D2R), cy = Math.cos(o.yaw * D2R);
   let dx = sy * fwd + cy * side, dz = cy * fwd - sy * side;
   const len = Math.hypot(dx, dz);
-  const moving = len > 0 && !(o.web_t > 0) && !o.wl && !(o.slam && o.slam.stage === 'sit');
+  const moving = len > 0 && !(o.web_t > 0) && !o.wl && !o.uni && !(o.slam && o.slam.stage === 'sit');
   if (moving) {
     dx /= len; dz /= len;
     let speed = sprinting() ? Player.RUN : Player.WALK;
@@ -2457,7 +2861,9 @@ function updatePlayer(o, dt) {
     o.x = clamp(o.x + dx * speed * dt, -285, 285);
     o.z = clamp(o.z + dz * speed * dt, -285, 285);
   }
-  const aiming = ['gun', 'bubbler', 'pistol', 'webshooter', 'weblaunch'].includes(o.weapon) || o.punch_t !== null || (o.point_t !== null && o.point_t !== undefined);
+  if (!(o.wl && o.wl.stage === 'fly') && (!NET || gg.phase === 'playing'))      // dragged in by an enemy Vader's Force Pull
+    for (const r of remotes.values()) if (!r.ghost && r.kind === 'warden' && r.wp === 'forcepull' && r.fp_left > 0 && inForceCone({ x: r.x, y: r.y, z: r.z, yaw: r.body.ry, pitch: r.pitch }, o.x, o.y, o.z)) pullToward(o, r.x, r.z, dt);
+  const aiming = ['gun', 'bubbler', 'pistol', 'webshooter', 'weblaunch', 'forcepull', 'repulsor'].includes(o.weapon) || !!o.uni || o.punch_t !== null || (o.point_t !== null && o.point_t !== undefined);
   if (aiming) o.body.ry += wrap(o.yaw - o.body.ry) * Math.min(1, 20 * dt);
   else if (moving) o.body.ry += wrap(Math.atan2(dx, dz) / D2R - o.body.ry) * Math.min(1, 6 * dt);
   else o.body.ry += wrap(o.yaw - o.body.ry) * Math.min(1, 4 * dt);
@@ -2479,12 +2885,14 @@ function updatePlayer(o, dt) {
     if (o.y >= top - Player.STEP_UP) groundY = Math.max(groundY, top);
   }
   if (o.wl && o.wl.stage === 'fly') updateLaunch(o, dt);
+  else if (o.uni) { o.y = groundY + uniAlt(o.uni.t); o.vy = 0; o.grounded = o.uni.t < 0.05 || o.uni.t >= UNI_T_END - 0.05; }   // Unibeam: his height follows the move's script
   else {
     o.vy -= Player.GRAV * (o.slam && o.slam.stage === 'air' && o.vy < 0 ? 1.8 : 1) * dt; o.y += o.vy * dt;
     if (o.y <= groundY) { o.y = groundY; o.vy = 0; o.grounded = true; }
     else if (o.grounded && o.y - groundY < 0.4 && o.vy <= 0) { o.y = groundY; o.vy = 0; o.grounded = true; }
     else o.grounded = false;
   }
+  if (o.grounded) o.djUsed = false;                        // landing refills Spider-Man's double jump
   o.root.position.set(o.x, o.y, o.z);
 
   if (o.kind === 'jack') animateJack(o, moving, dt);
@@ -2493,6 +2901,8 @@ function updatePlayer(o, dt) {
   else if (o.kind === 'koolaid') animateKool(o, moving, dt);
   else if (o.kind === 'warden' && o.weapon === 'saber') animateWarden(o, moving, dt);
   else animateSponge(o, moving, dt);
+  if (o.kind === 'ironman') { const sw = moving && o.grounded ? Math.sin(o.walk_t) * 14 : 0; o.left_arm.rx = IRON_REST_L[0] - sw; o.left_fore.rx = IRON_REST_L[1]; o.right_arm.rx = IRON_REST_R[0] + sw; o.right_fore.rx = IRON_REST_R[1]; o.right_fore.rz = 0; }   // arms down at his sides with a slight bend, swinging a little when he walks
+  if (o.kind === 'ironman' && o.uni) uniPose(o, mr_of(o));
   updateWeapons(o, dt);
   if (o.dog) o.dog.update(dt);
 
@@ -2543,6 +2953,8 @@ addEventListener('keydown', e => {
   if (!me) return;
   if (e.code === 'Space' && me.grounded && !me.wl && !me.slam && !(me.web_t > 0)) {
     me.vy = Player.JUMP * (me.skeleton ? Math.sqrt(SKEL_JUMP_MULT) : 1) * (me.kind === 'warden' && me.weapon === 'saber' ? Math.sqrt(SABER_BOOST) : 1);   // jump height goes with vy squared, so sqrt(1.25) = 25% higher me.grounded = false;
+  } else if (e.code === 'Space' && me.kind === 'spiderman' && !me.grounded && !me.djUsed && !me.wl && !(me.web_t > 0)) {   // Spider-Man's double jump: one extra jump in mid-air
+    me.vy = Player.JUMP; me.djUsed = true;
   } else if (e.code === 'KeyR' && me.kind === 'wick' && me.weapon === 'pistol') {
     if (me.reload_t === null && me.ammo < PISTOL_MAG) me.reload_t = 0;
   } else if (e.code === 'KeyQ' && !e.repeat) cycleWeapon(me, -1);
@@ -2584,7 +2996,8 @@ const CHAR_INFO = {
   wick: { name: 'John Wick', short: 'WICK', initials: 'JW', tag: 'BABA YAGA', gear: ['Jab', 'Pistol (8 rounds)', 'Whistle + Dog'], accent: '#a0afcd' },
   spiderman: { name: 'Spider-Man', short: 'SPIDER-MAN', initials: 'SM', tag: 'WEB-SLINGER', gear: ['Strike', 'Electric Web Shooter', 'Web Launch'], accent: '#5078eb' },
   koolaid: { name: 'Kool-Aid Man', short: 'KOOL-AID', initials: 'KA', tag: 'OH YEAH!', gear: ['Headbutt', 'Butt Slam', 'Pink Straw'], accent: '#e8333f' },
-  warden: { name: 'Darth Vader', short: 'VADER', initials: 'DV', tag: 'DARK LORD', gear: ['Spartan Kick', 'Lightsaber'], accent: '#c0243c' },
+  ironman: { name: 'Iron Man', short: 'IRON MAN', initials: 'IM', tag: 'GENIUS, BILLIONAIRE', gear: ['Right Hook', 'Repulsor', 'Unibeam'], accent: '#e8b32e' },
+  warden: { name: 'Darth Vader', short: 'VADER', initials: 'DV', tag: 'DARK LORD', gear: ['Spartan Kick', 'Lightsaber', 'Force Pull'], accent: '#c0243c' },
 };
 let selected = 'spongebob';
 const menuGroup = G(world);
@@ -2596,8 +3009,8 @@ for (const [r, col] of [[4.5, 0xf5d73c], [4.1, rgb(24, 32, 52)], [3.7, rgb(36, 4
 }
 const showcases = {};
 for (const kind of Object.keys(CHAR_INFO)) {
-  const root = G(menuGroup, [0, 0.55 - (kind === 'spongebob' ? SPONGE_LEG_CUT * 1.15 : 0), 0]);
-  root.scale.setScalar(kind === 'koolaid' ? 0.95 : 1.15); root.ry = 180;
+  const root = G(menuGroup, [0, 0.55 - (kind === 'spongebob' ? SPONGE_LEG_CUT * 1.15 : 0) + (kind === 'ironman' ? 0.55 * 0.9 * IRON_SCALE - 0.55 * 1.15 : 0), 0]);
+  root.scale.setScalar(kind === 'koolaid' ? 0.95 : kind === 'ironman' ? 0.9 : 1.15);   // Iron Man's model is already scaled up in the game, so the showcase shrinks him to fit the stage root.ry = 180;
   showcases[kind] = { root, rig: buildRig(root, kind) };
   root.visible = kind === selected;
 }
@@ -2694,6 +3107,10 @@ function updateMenu(dt) {
       rig.left_leg.rx = -16; rig.right_leg.rx = 16;
       rig.left_arm.rx = SPIDER_GUARD_L[0] - Math.sin(t * 2.2) * 4; rig.right_arm.rx = SPIDER_GUARD_R[0] + Math.sin(t * 2.2) * 4;
       rig.left_fore.rx = SPIDER_GUARD_L[1]; rig.right_fore.rx = SPIDER_GUARD_R[1];
+    } else if (kind === 'ironman') {
+      mr.rz = Math.sin(t * 1.5) * 2; mr.position.y = Math.abs(Math.sin(t * 2)) * 0.04;
+      rig.left_arm.rx = IRON_REST_L[0] + Math.sin(t * 1.3) * 2; rig.right_arm.rx = IRON_REST_R[0] - Math.sin(t * 1.3) * 2;
+      rig.left_fore.rx = IRON_REST_L[1]; rig.right_fore.rx = IRON_REST_R[1];
     } else if (kind === 'koolaid') {
       mr.rz = Math.sin(t * 1.5) * 3; mr.position.y = Math.abs(Math.sin(t * 2)) * 0.06;
       rig.left_arm.rx = Math.sin(t * 1.5) * 6; rig.right_arm.rx = -Math.sin(t * 1.5) * 6;
@@ -2740,11 +3157,11 @@ class RemotePlayer {
   constructor(pid, name, kind = 'spongebob') {
     this.pid = pid; this.name = name;
     this.kind = CHAR_INFO[kind] ? kind : 'spongebob'; kind = this.kind;
-    const cut = kind === 'spongebob' ? SPONGE_LEG_CUT : 0;
+    const cut = kind === 'spongebob' ? SPONGE_LEG_CUT : kind === 'ironman' ? -0.45 : 0;
     Object.assign(this, {
       alive: true, hp: 100, max_hp: 100, first: true, goal_ry: 0, wp: '?', punch_t: -1, pitch: 0, walk_t: 0, idle_t: 0,
       gun_on: false, skeleton: false, point_t: null, med_t: null, whistle_t: null, whistle_blown: false, recoil: 0,
-      smoke_for: 0, smoke_t: 0, wl_stage: null, wl_t: 0, nozzles: [], dog: null, x: 0, y: 0, z: 0, grounded: true,
+      smoke_for: 0, smoke_t: 0, fp_left: 0, wl_stage: null, wl_t: 0, nozzles: [], dog: null, x: 0, y: 0, z: 0, grounded: true,
       gun: null, bubbler: null, pistol: null, whistle_prop: null, hold_arms: [], left_fore: null, right_fore: null,
     });
     this.goal = new V3(); this.last = new V3();
@@ -2769,6 +3186,7 @@ class RemotePlayer {
       part(this.whistle_prop, 'cube', [0, -0.42, 0.05], [0.05, 0.05, 0.13], STEEL);
       part(this.whistle_prop, 'cube', [0, -0.38, 0.1], [0.05, 0.05, 0.05], STEEL);
     }
+    if (kind === 'ironman') { this.palm = G(this.right_fore, [0, -0.42, 0.12]); this.charge_orb = makeChargeOrb(this.palm); this.rep_charge = null; }
     this.applyWeapon(null);
     this.bar = makeBar(1.0, 0.12, 3.0 - cut, this.root);
     this.name_tag = makeNameTag(name, REMOTE_COLORS[pid % REMOTE_COLORS.length], 3.4 - cut, this.root);
@@ -2855,7 +3273,7 @@ class RemotePlayer {
     if (this.punch_t >= 0 && !this.gun_on) {
       this.punch_t += dt;
       pose = (jack || (ward && this.wp === 'saber')) ? swordPose(this.punch_t) : wick ? wickJabPose(this.punch_t) : spidey ? spiderStrikePose(this.punch_t)
-        : kool ? headbuttPose(this.punch_t) : ward ? kickPose(this.punch_t) : punchPose(this.punch_t);
+        : kool ? headbuttPose(this.punch_t) : ward ? kickPose(this.punch_t) : this.kind === 'ironman' ? hookPose(this.punch_t) : punchPose(this.punch_t);
       punching = pose !== null;
       if (!punching) { this.punch_t = -1; if (spidey) mr.ry = 0; }
     }
@@ -2888,9 +3306,9 @@ class RemotePlayer {
 
     // ---- resting arms (when no ability animation is using them)
     if (!(punching || aiming || whistling || pointing || flipping)) {
-      if (wick) {
-        for (const [arm, fore, g] of [[this.right_arm, this.right_fore, WICK_GUARD_R], [this.left_arm, this.left_fore, WICK_GUARD_L]]) {
-          arm.rx = lerp(arm.rx, g[0], k); fore.rx = lerp(fore.rx, g[1], k); arm.ry = lerp(arm.ry, 0, k);
+      if (wick || this.kind === 'ironman') {
+        for (const [arm, fore, g] of [[this.right_arm, this.right_fore, this.kind === 'ironman' ? IRON_REST_R : WICK_GUARD_R], [this.left_arm, this.left_fore, this.kind === 'ironman' ? IRON_REST_L : WICK_GUARD_L]]) {
+          arm.rx = lerp(arm.rx, g[0], k); fore.rx = lerp(fore.rx, g[1], k); arm.ry = lerp(arm.ry, 0, k); if (this.kind === 'ironman') fore.rz = lerp(fore.rz, 0, k);
         }
       } else if (jack) {
         const held = (this.wp === null || this.wp === 'sword') ? JACK_GUARD : JACK_HOLD;
@@ -2908,6 +3326,9 @@ class RemotePlayer {
         this.left_arm.rx = lerp(this.left_arm.rx, 0, k); this.right_arm.rx = lerp(this.right_arm.rx, 0, k);
       }
     }
+
+    if (this.fp_left > 0) this.fp_left -= dt;
+    if (ward && this.wp === 'forcepull' && this.fp_left > 0 && !punching) this.right_arm.rx = lerp(this.right_arm.rx, -85 + clamp(this.pitch, -45, 45) * 0.9, k);   // arm reaching out
 
     // ---- punches / sword chop / jab / headbutt
     if (punching) {
@@ -2927,6 +3348,9 @@ class RemotePlayer {
       } else if (ward) {
         const [leg, lean, lunge, arms] = pose;
         mr.rx = lean; mr.position.z = lunge; this.right_leg.rx = leg; this.left_leg.rx = -lean; this.left_arm.rx = arms; this.right_arm.rx = arms;
+      } else if (this.kind === 'ironman') {
+        const [ru, rs, lu, twist, lunge, rf, lf, rfz] = pose;
+        this.right_arm.rx = ru; this.right_arm.ry = rs; this.left_arm.rx = lu; mr.ry = twist; mr.position.z = lunge; this.right_fore.rx = rf; this.left_fore.rx = lf; this.right_fore.rz = rfz;
       } else {
         const [rot, stretch, lunge] = pose;
         for (const a of [this.left_arm, this.right_arm]) { a.rx = rot; a.scale.y = stretch; }
@@ -2936,10 +3360,21 @@ class RemotePlayer {
       this.left_arm.scale.y = 1; this.right_arm.scale.y = 1;
       mr.position.z = lerp(mr.position.z, 0, k);
       if (kool || ward) mr.rx = lerp(mr.rx, 0, k);
+      if (this.kind === 'ironman') this.right_arm.ry = lerp(this.right_arm.ry, 0, k);
       if (!spidey) mr.ry = lerp(wrap(mr.ry), 0, k);
     }
 
     // ---- Spider-Man: arm out holding up the web shooter, web launch pose
+    if (this.kind === 'ironman' && this.uni) { uniStep(this, dt); if (this.uni) uniPose(this, mr); }   // someone else's unibeam: same script, same pose
+    if (this.kind === 'ironman') {                                    // someone else's repulsor charging: same growing glow
+      if (this.rep_charge !== null && this.wp !== 'repulsor') this.rep_charge = null;
+      if (this.rep_charge !== null) { this.rep_charge += dt; if (this.rep_charge >= REPULSOR_CHARGE) this.rep_charge = null; }
+      setChargeOrb(this.charge_orb, this.rep_charge === null ? null : this.rep_charge / REPULSOR_CHARGE);
+    }
+    if (this.kind === 'ironman' && this.wp === 'repulsor' && !punching) {
+      const pitch = clamp(this.pitch, -45, 45), rec = this.recoil;
+      this.right_arm.rx = -88 + pitch * 0.9 - rec * 10; this.right_fore.rx = -6 - rec * 8; this.right_arm.ry = -4; mr.position.z = -0.06 * rec;
+    }
     if (spidey && this.wp === 'webshooter' && !punching) {
       const pitch = clamp(this.pitch, -45, 45), rec = this.recoil;
       this.right_arm.rx = -86 + pitch * 0.9 - rec * 14; this.right_fore.rx = -8 - rec * 12;
@@ -3072,6 +3507,9 @@ function handleFx(m) {                                         // another player
       if (m.i) new ExplosionFx(end, 0.7, rgb(255, 240, 200), false);
       if (r) r.recoil = 1.0;
     } else if (k === 'straw') { new StrawShot(vec(m.p), vec(m.v), null, true); new ExplosionFx(vec(m.p), 0.3, rgb(235, 60, 70), false); }
+    else if (k === 'repcharge' && r && r.charge_orb) r.rep_charge = 0;
+    else if (k === 'unistart' && r && r.kind === 'ironman' && !r.uni) r.uni = { t: 0, beam: null };
+    else if (k === 'repulsor') { new RepulsorBolt(vec(m.p), vec(m.v), null, true); new ExplosionFx(vec(m.p), 0.45, rgb(190, 230, 255), false); if (r) r.recoil = 1.0; }
     else if (k === 'webshot') { new WebShot(vec(m.p), vec(m.v), null, true); if (r) r.recoil = 1.0; }
     else if (k === 'wlstart' && r) makeAnchorWebs(r, m.p);
     else if (k === 'wlgo' && r) dropAnchorWebs(r);
@@ -3079,6 +3517,7 @@ function handleFx(m) {                                         // another player
     else if (k === 'point' && r) r.point_t = 0;
     else if (k === 'med' && r) r.med_t = 0;
     else if (k === 'whistle' && r) { r.whistle_t = 0; r.whistle_blown = false; }
+    else if (k === 'fpull' && r) { r.fp_left = FORCEPULL_TIME; new ForceTunnel(r, false); }
     else if (k === 'slam') {
       new KoolShockwave(vec(m.p), null, true);
       new ExplosionFx(new V3(m.p[0], m.p[1] + 0.5, m.p[2]), 2.2, rgb(255, 60, 60), false);
@@ -3150,7 +3589,7 @@ function handleNet(m) {
 function pumpNet() { for (const m of NET.inbox.splice(0)) handleNet(m); }
 
 /* ---- gun game: the server runs the ladder, the lobby countdown and the win ---- */
-const GUN_ORDER = Object.keys(CHAR_INFO);          // spongebob, jack, wick, spiderman, koolaid, warden (Vader = last)
+const GUN_ORDER = ['spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden'];          // spongebob, jack, wick, spiderman, koolaid, warden (Vader = last)
 const gg = { phase: 'off', level: 0 };
 const ggLevels = new Map();
 const bigEl = document.getElementById('big'), ggInfoEl = document.getElementById('gginfo');
@@ -3277,7 +3716,7 @@ function frame() {
   if (NET && mode === 'menu') sendGhost(dt);
   if (boardOn) { boardT += dt; if (boardT > 0.2) { boardT = 0; renderBoard(); } }
   if (mode === 'menu') updateMenu(dt);
-  else if (me) { updatePlayer(me, dt); for (const t of targets) t.update(dt); for (const r of remotes.values()) r.update(dt); }
+  else if (me) { updatePlayer(me, dt); forcePullTargets(dt); for (const t of targets) t.update(dt); for (const r of remotes.values()) r.update(dt); }
   updateEffects(dt);
   sunSpin.rotation.z += dt * 0.15; sunSpin.scale.setScalar(1 + 0.025 * Math.sin(clock.elapsedTime * 2));
   renderer.render(scene, camera);
