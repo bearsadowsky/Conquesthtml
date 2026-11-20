@@ -19,7 +19,7 @@ from http import HTTPStatus
 MAX_PLAYERS = 5
 CHARACTERS = ('spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden')
 FX_KINDS = ('spray', 'ship', 'shot', 'point', 'med', 'whistle',
-            'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam')  # ability visuals we relay
+            'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam', 'fpull', 'repulsor', 'repcharge', 'unistart')  # ability visuals we relay
 TARGET_COUNT = 8
 MAX_HP = 100.0
 TARGET_REVIVE_DELAY = 3.0
@@ -34,6 +34,15 @@ WIN_KICK_DELAY = 5            # seconds the winner text shows before everyone is
 SPAWN_RADIUS = 35.0           # after a kill you reappear this far (at most) from where you were
 SPAWN_MIN = 6.0
 MAP_LIMIT = 280.0
+# what the victim's name is followed by when someone dies, by the cause the attacker's client reports
+DEATH_TEXT = {
+    'burger': 'was a burger', 'bubble': 'popped', 'sword': 'was chopped', 'ship': 'went overboard',
+    'pistol': 'was shot', 'dog': 'was bitten', 'launch': 'got mauled', 'web': 'was electrified',
+    'slam': 'was slammed', 'straw': 'got spit on', 'saber': 'was sliced and diced',
+    'repulsor': 'was blasted', 'unibeam': 'was vaporized',
+    'hunted': 'was hunted to death',   # killing John Wick's dog
+}
+DEFAULT_DEATH = 'was killed'
 
 
 class Player:
@@ -44,6 +53,7 @@ class Player:
         self.hp = MAX_HP
         self.kind = 'spongebob'   # which character they picked
         self.ghost = False        # True while they are in the menu: untouchable
+        self.skeleton = False     # True while Jack is in skeleton form: takes no damage
         self.ready = False        # clicked Play: part of the gun game
         self.level = 0            # index into CHARACTERS (the gun game ladder)
         self.kills = 0
@@ -138,6 +148,7 @@ class Game:
                 if m.get('sk'):
                     extra['sk'] = 1
                 player.ghost = bool(m.get('gh'))
+                player.skeleton = bool(m.get('sk'))   # the client reports skeleton form; the server must ignore damage too
                 if player.ghost:
                     extra['gh'] = 1
                     player.hp = MAX_HP             # ghosts are always topped up
@@ -190,7 +201,7 @@ class Game:
                 await asyncio.sleep(step)
                 if self.players.get(victim.id) is not victim:
                     return
-                await self.hit_player(attacker, victim.id, WEB_DAMAGE_TOTAL / WEB_TICKS)
+                await self.hit_player(attacker, victim.id, WEB_DAMAGE_TOTAL / WEB_TICKS, 'web')
             await self.broadcast({'t': 'unwebbed', 'id': victim.id})
         finally:
             victim.web_task = None
@@ -204,7 +215,7 @@ class Game:
                 if kind == 't':
                     await self.hit_target(int(h[1]), float(h[2]), float(h[3]), float(h[4]))
                 elif kind == 'p':
-                    await self.hit_player(attacker, int(h[1]), float(h[2]))
+                    await self.hit_player(attacker, int(h[1]), float(h[2]), h[3] if len(h) > 3 else None)
             except (IndexError, TypeError, ValueError):
                 continue
 
@@ -223,9 +234,11 @@ class Game:
         self.target_hp[i] = 100.0
         await self.broadcast({'t': 'trevive', 'i': i})
 
-    async def hit_player(self, attacker, victim_id, amount):
+    async def hit_player(self, attacker, victim_id, amount, cause=None):
         victim = self.players.get(victim_id)
         if victim is None or victim.ghost:       # ghosts (in the menu) can't be hurt
+            return
+        if victim.skeleton and cause != 'hunted':  # skeletons can't be hurt, except by the dog's curse
             return
         if self.phase != 'playing' or not victim.ready or not attacker.ready:
             return                                # no damage in the lobby, countdown or after a win
@@ -234,13 +247,13 @@ class Game:
         if victim.hp <= 0:
             victim.hp = MAX_HP
             victim.deaths += 1
+            verb = DEATH_TEXT.get(cause, DEFAULT_DEATH) if isinstance(cause, str) else DEFAULT_DEATH
+            text = f'{victim.name} {verb}'
             if victim is attacker:
                 killer = 0                        # 0 = nobody gets the kill
-                text = f'{victim.name} blew themselves up!'
             else:
                 attacker.kills += 1
                 killer = attacker.id
-                text = f'{attacker.name} flattened {victim.name}!'
             await self.broadcast({'t': 'died', 'id': victim.id, 'killer': killer, 'text': text})
             if victim is not attacker and self.phase == 'playing':
                 await self.level_up(attacker)
