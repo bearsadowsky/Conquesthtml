@@ -3,7 +3,7 @@ Run: python conquest_server.py
 Env: PORT (default 8080)
 GUN GAME: players click Play (message 'ready'). When two are ready a 10 second countdown
 starts (nobody can leave). Every kill on another player moves the killer up the ladder
-(CHARACTERS order) with full health and a random respawn near where they were. A kill made
+(CHARACTERS order) with full health and a random respawn within 10 tiles of the spawn point. A kill made
 while playing the last character (Vader) wins: everyone is told, then kicked after 5 seconds.
 FREE PLAY: a second, separate room. A player who clicks Free Play (message 'free' with a character
 kind) can be any character and switch whenever they like ('fkind'). Free players only see and hurt other
@@ -35,8 +35,8 @@ MAX_DAMAGE = 500.0            # sanity clamp on a single reported hit
 LAST_LEVEL = len(CHARACTERS) - 1   # Vader: a kill with him wins the game
 COUNTDOWN = 10                # seconds between the 2nd player clicking Play and the start
 WIN_KICK_DELAY = 5            # seconds the winner text shows before everyone is kicked
-SPAWN_RADIUS = 35.0           # after a kill you reappear this far (at most) from where you were
-SPAWN_MIN = 6.0
+SPAWN_RADIUS = 10.0           # after a kill you reappear within this many tiles of the spawn point
+SPAWN_MIN = 0.0
 MAP_LIMIT = 280.0
 # what the victim's name is followed by when someone dies, by the cause the attacker's client reports
 DEATH_TEXT = {
@@ -414,17 +414,17 @@ class Game:
         await self.send_gg()
 
     def random_spawn(self, player):
-        x, z = player.state[0], player.state[2]
+        x, z = (player.id - 3) * 2.0, 0.0           # the player's spawn point (same as the client's SPAWN_X, 0)
         others = [p for p in self.active() if p is not player]
         best = (x, z)
         for _ in range(12):
             ang = random.uniform(0, math.tau)
-            r = random.uniform(SPAWN_MIN, SPAWN_RADIUS)
+            r = math.sqrt(random.uniform(SPAWN_MIN ** 2, SPAWN_RADIUS ** 2))   # even spread over the circle
             nx, nz = x + math.cos(ang) * r, z + math.sin(ang) * r
             if abs(nx) > MAP_LIMIT or abs(nz) > MAP_LIMIT:
                 continue
             best = (nx, nz)
-            if all(math.hypot(nx - o.state[0], nz - o.state[2]) > 10 for o in others):
+            if all(math.hypot(nx - o.state[0], nz - o.state[2]) > 4 for o in others):
                 break                              # not right on top of someone else
         return round(best[0], 2), round(best[1], 2)
 
