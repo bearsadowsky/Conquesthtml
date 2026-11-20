@@ -32,6 +32,12 @@
   #lhint { top: calc(20 * var(--u)); font-size: calc(2 * var(--u)); }
   #play { position: absolute; left: calc(6 * var(--u)); top: calc(3.75 * var(--u)); width: calc(34 * var(--u)); height: calc(8.5 * var(--u)); border: 0; border-radius: calc(1 * var(--u)); font: inherit; font-size: calc(3.6 * var(--u)); font-weight: 700; color: #fff; background: #2ebe54; cursor: pointer; }
   #play:hover { background: #50de73; } #play:active { background: #1e9640; }
+  #free { display: none; position: absolute; left: calc(6 * var(--u)); top: calc(10.25 * var(--u)); width: calc(34 * var(--u)); height: calc(6.2 * var(--u)); border: 0; border-radius: calc(1 * var(--u)); font: inherit; font-size: calc(3 * var(--u)); font-weight: 700; color: #fff; background: #2f7be0; cursor: pointer; }
+  #free:hover { background: #5399f0; } #free:active { background: #1f5cb3; }
+  #right.online #play { top: calc(2 * var(--u)); height: calc(7 * var(--u)); font-size: calc(3.2 * var(--u)); }
+  #right.online #free { display: block; }
+  #right.online #rsub { top: calc(17.6 * var(--u)); font-size: calc(2.1 * var(--u)); }
+  #right.online #renter { top: calc(21 * var(--u)); font-size: calc(1.7 * var(--u)); }
   #rsub { top: calc(15.5 * var(--u)); font-size: calc(2.5 * var(--u)); }
   #renter { top: calc(20 * var(--u)); font-size: calc(2 * var(--u)); }
 
@@ -97,6 +103,7 @@
   </div>
   <div class="panel" id="right">
     <button id="play">PLAY</button>
+    <button id="free">FREE PLAY</button>
     <div class="ctr mut" id="rsub">Solo practice</div>
     <div class="ctr dim" id="renter">or press ENTER</div>
   </div>
@@ -2948,9 +2955,15 @@ addEventListener('keydown', e => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') selectCharacter(order[(i - 1 + order.length) % order.length]);
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') selectCharacter(order[(i + 1) % order.length]);
     else if (e.code === 'Enter') startGame();
+    else if (e.code === 'KeyF' && NET) startGame(true);
     return;
   }
   if (!me) return;
+  if (freeMode && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {     // free play: swap character on the spot
+    const order = Object.keys(CHAR_INFO), i = order.indexOf(me.kind);
+    freeSwitch(order[(i + (e.code === 'BracketRight' ? 1 : order.length - 1)) % order.length]);
+    return;
+  }
   if (e.code === 'Space' && me.grounded && !me.wl && !me.slam && !(me.web_t > 0)) {
     me.vy = Player.JUMP * (me.skeleton ? Math.sqrt(SKEL_JUMP_MULT) : 1) * (me.kind === 'warden' && me.weapon === 'saber' ? Math.sqrt(SABER_BOOST) : 1);   // jump height goes with vy squared, so sqrt(1.25) = 25% higher me.grounded = false;
   } else if (e.code === 'Space' && me.kind === 'spiderman' && !me.grounded && !me.djUsed && !me.wl && !(me.web_t > 0)) {   // Spider-Man's double jump: one extra jump in mid-air
@@ -3443,20 +3456,31 @@ class RemotePlayer {
 /* ---- hold Tab: leaderboard ---- */
 const boardEl = document.createElement('div'); boardEl.id = 'board'; boardEl.className = 'hidden'; document.body.appendChild(boardEl);
 let boardOn = false, boardT = 0;
+let freeMode = false, freeRows = [];          // free play: the server keeps its own kills/deaths table ([id, kills, deaths, kind])
 function renderBoard() {
   const names = new Map();
   if (NET) { for (const [id, n] of netRoster) names.set(id, n); for (const r of remotes.values()) names.set(r.pid, r.name); names.set(NET.my_id, NET.name); }
   else names.set(0, 'You');
-  const rows = [...names].map(([id, name]) => ({ id, name, lv: ggLevels.get(id) ?? 0, ...statOf(id) }))
-    .sort((a, b) => b.lv - a.lv || b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+  let rows;
+  if (freeMode) {
+    const byId = new Map(freeRows.map(([id, k, d, kind]) => [id, { kills: k, deaths: d, kind }]));
+    if (!byId.has(NET.my_id)) byId.set(NET.my_id, { kills: 0, deaths: 0, kind: me ? me.kind : selected });
+    rows = [...byId].map(([id, v]) => ({ id, name: names.get(id) || `Player ${id}`, ...v }))
+      .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+  } else {
+    rows = [...names].filter(([id]) => !NET || id === NET.my_id || ggLevels.has(id))      // only the players in the gun game
+      .map(([id, name]) => ({ id, name, lv: ggLevels.get(id) ?? 0, ...statOf(id) }))
+      .sort((a, b) => b.lv - a.lv || b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+  }
   boardEl.textContent = '';
-  const h = document.createElement('h3'); h.textContent = 'LEADERBOARD'; boardEl.appendChild(h);
+  const h = document.createElement('h3'); h.textContent = freeMode ? 'FREE PLAY LEADERBOARD' : 'LEADERBOARD'; boardEl.appendChild(h);
   const tb = document.createElement('table'), hr = tb.insertRow();
-  for (const c of (NET ? ['Player', 'Level', 'Kills', 'Deaths'] : ['Player', 'Kills', 'Deaths'])) { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); }
+  for (const c of (freeMode ? ['Player', 'Character', 'Kills', 'Deaths'] : NET ? ['Player', 'Level', 'Kills', 'Deaths'] : ['Player', 'Kills', 'Deaths'])) { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); }
   for (const r of rows) {
     const tr = tb.insertRow(); if (r.id === myId()) tr.className = 'me';
     const a = tr.insertCell(); a.textContent = r.name + (r.id === myId() && NET ? ' (you)' : '');
-    if (NET) tr.insertCell().textContent = r.lv + 1;
+    if (freeMode) tr.insertCell().textContent = (CHAR_INFO[r.kind] || CHAR_INFO.spongebob).short;
+    else if (NET) tr.insertCell().textContent = r.lv + 1;
     tr.insertCell().textContent = r.kills; tr.insertCell().textContent = r.deaths;
   }
   boardEl.appendChild(tb);
@@ -3482,7 +3506,7 @@ function initNetState() {
 }
 function refreshRoster() {
   if (!NET) return;
-  onlineEl.textContent = 'Online: ' + [NET.name + ' (you)', ...[...remotes.values()].map(r => r.name)].join(', ');
+  onlineEl.textContent = 'Online: ' + [NET.name + ' (you)', ...[...netRoster].filter(([id]) => id !== NET.my_id).map(([, n]) => n)].join(', ');
 }
 function ensureRemote(pid, name = null, kind = null) {
   if (pid === NET.my_id) return null;
@@ -3490,7 +3514,7 @@ function ensureRemote(pid, name = null, kind = null) {
   if (r && kind && CHAR_INFO[kind] && r.kind !== kind) {      // they picked a different character: rebuild their model
     name = name || r.name; r.cleanup(); remotes.delete(pid); r = null;
   }
-  if (!r) { r = new RemotePlayer(pid, name || `Player ${pid}`, CHAR_INFO[kind] ? kind : 'spongebob'); remotes.set(pid, r); }
+  if (!r) { r = new RemotePlayer(pid, name || netRoster.get(pid) || `Player ${pid}`, CHAR_INFO[kind] ? kind : 'spongebob'); remotes.set(pid, r); }
   else if (name) r.setName(name);
   return r;
 }
@@ -3527,6 +3551,7 @@ function handleFx(m) {                                         // another player
 function shooterOf(key) { const id = parseInt(String(key).split(':')[0], 10); return Number.isNaN(id) ? null : (remotes.get(id) || null); }
 function handleNet(m) {
   const t = m.t;
+  if (t === 'fp') { freeRows = m.rows || []; return; }
   if (t === 'gg') { ggState(m); return; }
   if (t === 'lvl') { ggLevel(m); return; }
   if (t === 'win') { ggWin(m); return; }
@@ -3537,7 +3562,7 @@ function handleNet(m) {
     else if (t === 'thit') { if (m.hp <= 0) netDeadTargets.add(m.i); else netDeadTargets.delete(m.i); }
     else if (t === 'trevive') netDeadTargets.delete(m.i);
   }
-  if (t === 'died') tallyDeath(m);
+  if (t === 'died') { if (!freeMode) tallyDeath(m); }
   else if (t === 'fx' && m.k === 'kill' && !serverNamesKiller && Number.isInteger(m.v)) creditKill(m.id, m.v);
   if (!me && ['snap', 'join', 'leave', 'fire', 'explode', 'thit', 'trevive', 'died', 'fx', 'webbed', 'unwebbed'].includes(t)) return;   // in character select: tracked above, nothing to show
   if (t === 'snap') {
@@ -3549,11 +3574,13 @@ function handleNet(m) {
         const r = ensureRemote(pid, null, a.length > 8 ? a[8] : null);
         if (r) r.setState(...a.slice(0, 8), a.length > 9 && a[9] && typeof a[9] === 'object' ? a[9] : null);
       }
+      for (const [pid, r] of [...remotes]) if (!(String(pid) in m.p)) { remotes.delete(pid); r.cleanup(); }   // someone in the other room (gun game / free play): not part of our game
     }
-  } else if (t === 'join') { ensureRemote(m.id, m.name); refreshRoster(); showMsg(`${m.name} joined`, 2.5); }
+  } else if (t === 'join') { refreshRoster(); showMsg(`${m.name} joined`, 2.5); }      // their model appears with their first snapshot, if they are in our room
   else if (t === 'leave') {
     const r = remotes.get(m.id);
-    if (r) { remotes.delete(m.id); showMsg(`${r.name} left`, 2.5); r.cleanup(); refreshRoster(); }
+    if (r) { remotes.delete(m.id); showMsg(`${r.name} left`, 2.5); r.cleanup(); }
+    refreshRoster();
   } else if (t === 'fire') {
     new Burger(vec(m.p), vec(m.v), m.b, false);
     const sh = shooterOf(m.b); if (sh) sh.gunFired();
@@ -3589,7 +3616,7 @@ function handleNet(m) {
 function pumpNet() { for (const m of NET.inbox.splice(0)) handleNet(m); }
 
 /* ---- gun game: the server runs the ladder, the lobby countdown and the win ---- */
-const GUN_ORDER = ['spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'warden'];          // spongebob, jack, wick, spiderman, koolaid, warden (Vader = last)
+const GUN_ORDER = ['spongebob', 'jack', 'wick', 'spiderman', 'koolaid', 'ironman', 'warden'];          // spongebob, jack, wick, spiderman, koolaid, ironman, warden (Vader = last)
 const gg = { phase: 'off', level: 0 };
 const ggLevels = new Map();
 const bigEl = document.getElementById('big'), ggInfoEl = document.getElementById('gginfo');
@@ -3601,6 +3628,7 @@ function setBig(text, cls = '', secs = 0) {
 }
 function ggHud() {
   if (!NET || mode !== 'play') { ggInfoEl.textContent = ''; return; }
+  if (freeMode) { ggInfoEl.textContent = `FREE PLAY   ${CHAR_INFO[me ? me.kind : selected].name}\n[ and ] switch character   -   Hold Tab: leaderboard`; return; }
   const last = GUN_ORDER.length - 1, lv = gg.level;
   ggInfoEl.textContent = `GUN GAME   Level ${lv + 1}/${last + 1}: ${CHAR_INFO[GUN_ORDER[lv]].name}\n`
     + (lv < last ? `Next: ${CHAR_INFO[GUN_ORDER[lv + 1]].name}` : 'Get a kill to WIN!');
@@ -3617,6 +3645,13 @@ function switchCharacter(kind, tx, tz) {            // become another character:
   me.hp = me.max_hp; me.bar.set(1);
   crossEl.style.setProperty('--gap', 'calc(1.8 * var(--u))');
   selected = kind;
+}
+function freeSwitch(kind) {                       // free play: become another character right where you stand
+  if (!freeMode || !me || !CHAR_INFO[kind] || kind === me.kind) return;
+  switchCharacter(kind);
+  NET.send({ t: 'fkind', kind });                // the server tells everyone else which model to show (and keeps our health)
+  showMsg(`You are now ${CHAR_INFO[kind].name}`, 1.5);
+  ggHud();
 }
 function ggState(m) {
   ggLevels.clear();
@@ -3648,26 +3683,34 @@ function ggWin(m) {                                  // a kill with Vader: show 
 }
 function ggKick() { if (me) returnToMenu(); }
 
-function startGame() {
+function startGame(free = false) {
   if (mode === 'play') return;
+  free = free === true && !!NET;                       // (a click passes the event object: only a real true counts)
+  freeMode = free;
   mode = 'play'; leaving = false; hHold = 0; hideTip();
   document.getElementById('menu').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   menuGroup.visible = false;
-  me = makePlayer(NET ? GUN_ORDER[0] : selected);   // online: the gun game starts everyone as the first fighter                           // a brand-new player: full health, every cooldown ready
+  me = makePlayer(NET && !free ? GUN_ORDER[0] : selected);   // online gun game: everyone starts as the first fighter; free play and solo: whoever you picked                           // a brand-new player: full health, every cooldown ready
   Object.assign(me, { x: ghostPos.x, y: ghostPos.y, z: ghostPos.z, yaw: ghostPos.yaw });
   me.body.ry = ghostPos.ry; me.root.position.set(me.x, me.y, me.z); me.camPos.set(me.x, me.y + 1.6, me.z);
   if (NET) NET.send({ t: 'reset' });                   // ask the server to refill our health too
   if (NET) {                                          // the server decides where the dummies stand
     NET.welcome.targets.forEach(([tx, tz], i) => targets.push(new Target(tx, tz, i)));
     initNetState();
-    for (const [pid, name] of netRoster) ensureRemote(pid, name);
+    // (other players' models appear with their first snapshot, so only people in our room show up)
     for (const i of netDeadTargets) if (i < targets.length) targets[i].netHit(0, 0, 0);
     refreshRoster();
     NET.ready = true; netPumpOn = true;
-    gg.phase = 'lobby'; gg.level = 0; ggHud();
-    setBig('Waiting for another player...\nHold H to go back to the menu');
-    NET.send({ t: 'ready' });                         // I clicked Play
+    if (free) {
+      freeRows = []; gg.phase = 'playing'; gg.level = 0; ggHud();     // 'playing' so enemy abilities (Force Pull...) work on us; no lobby, no countdown
+      setBig('');
+      NET.send({ t: 'free', kind: selected });        // I clicked Free Play as this character
+    } else {
+      gg.phase = 'lobby'; gg.level = 0; ggHud();
+      setBig('Waiting for another player...\nHold H to go back to the menu');
+      NET.send({ t: 'ready' });                       // I clicked Play
+    }
   } else {
     for (let i = 0; i < 8; i++) {                     // eight target dummies in a ring around the spawn
       const ang = i / 8 * Math.PI * 2 + uni(-0.2, 0.2), r = uni(18, 45);
@@ -3690,7 +3733,8 @@ function returnToMenu() {
   targets.length = 0;
   destroyPlayer(me); me = null;
   mode = 'menu'; mouseHeld = false;
-  if (NET) NET.send({ t: 'unready' });
+  if (NET) NET.send({ t: 'unready' });                  // leaves whichever room we were in
+  freeMode = false; freeRows = [];
   gg.phase = 'off'; gg.level = 0; ggLevels.clear(); setBig(''); ggInfoEl.textContent = '';
   if (document.pointerLockElement) document.exitPointerLock();
   document.getElementById('hud').classList.add('hidden');
@@ -3699,8 +3743,13 @@ function returnToMenu() {
   menuGroup.visible = true;
   selectCharacter(selected);
 }
-document.getElementById('play').addEventListener('click', startGame);
-if (NET) document.getElementById('rsub').textContent = 'Online as ' + NET.name;
+document.getElementById('play').addEventListener('click', () => startGame());
+document.getElementById('free').addEventListener('click', () => startGame(true));
+if (NET) {
+  document.getElementById('right').classList.add('online');
+  document.getElementById('rsub').textContent = 'Online as ' + NET.name;
+  document.getElementById('renter').textContent = 'ENTER: gun game   -   F: free play (any character)';
+}
 selectCharacter(selected);
 fitTiles();
 document.fonts?.ready.then(() => { fitTiles(); fitHero(); });
