@@ -2043,7 +2043,7 @@ class GhostShip {
       new Puff(new V3(p.x, p.y + 0.3, p.z).addScaledVector(this.side, s * 1.1).addScaledVector(this.dir, -uni(0, 2)));
     }
     if (this.dist >= SHIP_RANGE || Math.abs(p.x) > 288 || Math.abs(p.z) > 288) return false;
-    if (this.t < 0.25 || this.visual) return true;
+    if (this.visual) return true;                                          // (hits count from the very first frame: it used to skip the first 0.25s, flying past anyone close)
     for (const v of allVictims()) {          // shoves everything it touches off to the side
       if (v === this.owner || !v.alive || this.hit.has(v)) continue;
       const rel = new V3(v.x - p.x, 0, v.z - p.z), fwd = rel.dot(this.dir), side = rel.dot(this.side);
@@ -2060,7 +2060,7 @@ class GhostShip {
 }
 function launchShip(o) {
   const f = new V3(Math.sin(o.yaw * D2R), 0, Math.cos(o.yaw * D2R));
-  const start = new V3(o.x, o.y, o.z).addScaledVector(f, 3.0);
+  const start = new V3(o.x, o.y, o.z).addScaledVector(f, 1.0);      // starts right in front of him, so someone point-blank gets hit too
   new GhostShip(start, f, o);
   if (NET) NET.send({ t: 'fx', k: 'ship', p: [r2(start.x), r2(start.y), r2(start.z)], d: [r2(f.x), r2(f.z)] });
 }
