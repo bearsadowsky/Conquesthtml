@@ -27,7 +27,7 @@ MAX_PLAYERS = 5
 CHARACTERS = ('spongebob', 'jack', 'wick', 'homer', 'spiderman', 'koolaid', 'ironman', 'potato', 'warden', 'thanos')
 FX_KINDS = ('spray', 'ship', 'shot', 'point', 'med', 'whistle',
             'straw', 'webshot', 'wlstart', 'wlgo', 'webt', 'slam', 'fpull', 'repulsor', 'repcharge', 'unistart',
-            'donut', 'eat', 'power', 'kill', 'rocket', 'rhit', 'rdir', 'rwave',
+            'donut', 'eat', 'power', 'cgrab', 'cfree', 'kill', 'rocket', 'rhit', 'rdir', 'rwave',
             'tcast', 'tpow', 'tpowx', 'tspace', 'ttime', 'tmind', 'treal', 'tsoul', 'tduck')  # ability visuals we relay (donut / eat / power are Homer's; rocket / rhit / rdir are Mr. Potato Head's guided rocket arm)
 FREE_CHARACTERS = CHARACTERS               # free play lets you be anyone on the ladder (Homer sits right before Spider-Man)
 TARGET_COUNT = 8
@@ -54,6 +54,7 @@ HEAL_WINDOW = 3.0             # ...and the most (HEAL_WINDOW_MAX) over any HEAL_
 HEAL_WINDOW_MAX = 60.0 * THANOS_HP_MULT
 MAX_DAMAGE = 500.0            # sanity clamp on a single reported hit
 LAST_LEVEL = len(CHARACTERS) - 1   # Thanos: a kill with him wins the game
+DROP_LEVEL = CHARACTERS.index('potato')   # dying as Thanos: back down to Mr. Potato Head (in an EXTREME game: all the way back to SpongeBob)
 STALE_CAUSE_TIME = 6.0        # seconds after a level-up during which more kills from the same ability don't level you up again
 COUNTDOWN = 10                # seconds between the 2nd player clicking Play and the start
 WIN_KICK_DELAY = 5            # seconds the winner text shows before everyone is kicked
@@ -100,6 +101,7 @@ class Player:
         self.fkills = 0           # free play tally (kept apart from the gun game's)
         self.fdeaths = 0
         self.level = 0            # index into CHARACTERS (the gun game ladder)
+        self.vote_extreme = False  # ticked the EXTREME switch when they clicked Play (the majority of the players in a match decides)
         self.stale = {}           # cause -> time until which kills by that cause no longer level you up (the old character's leftover shockwave etc.)
         self.kills = 0
         self.deaths = 0
@@ -184,6 +186,7 @@ class Game:
         self.phase = 'lobby'      # lobby -> countdown -> playing -> ended -> lobby
         self.cd_left = 0
         self.cd_task = None
+        self.extreme = False      # this match is EXTREME: dying as Thanos sends you back to SpongeBob (decided by majority vote when the countdown ends)
 
     # ---------------------------------------------------------- sending
     async def _send(self, player, text):
@@ -282,6 +285,11 @@ class Game:
                 player.set_giant(want_giant)
                 if player.giant:
                     extra['bg'] = 1
+                if player.kind == 'homer':             # where Homer is in eating the giant donut ('ea') / in the power-up ('pw'): relayed so everyone sees it
+                    for key in ('ea', 'pw'):
+                        val = m.get(key)
+                        if isinstance(val, (int, float)) and not isinstance(val, bool) and 0 <= val <= 60:
+                            extra[key] = float(val)
                 if player.ghost:
                     extra['gh'] = 1
                     player.refill()             # ghosts are always topped up
@@ -299,7 +307,7 @@ class Game:
             except (KeyError, TypeError, ValueError):
                 pass
         elif t == 'ready':
-            await self.set_ready(player)
+            await self.set_ready(player, bool(m.get('ex')))
         elif t == 'free':
             await self.set_free(player, m.get('kind'))
         elif t == 'fkind':
@@ -548,7 +556,9 @@ class Game:
         if victim.hp <= 0:
             victim.refill()
             victim.protect()                      # 2 seconds of ghost form after dying
-            sliver = victim is attacker and room == 'gun'
+            demote = (room == 'gun' and self.phase == 'playing' and victim.level >= LAST_LEVEL
+                      and not (victim is not attacker and attacker.level >= LAST_LEVEL))   # died as Thanos (unless this kill is the winning one)
+            sliver = victim is attacker and room == 'gun' and not demote
             if sliver:
                 victim.hp = SUICIDE_HP            # no suiciding to get a full health bar back
             if room == 'gun':
@@ -569,6 +579,8 @@ class Game:
             if sliver:
                 died['hp'] = SUICIDE_HP           # the client respawns with this much instead of a full bar
             await self.broadcast_room(room, died)
+            if demote:
+                await self.demote(victim)
             if room == 'free':
                 await self.send_fp()
             elif victim is not attacker and self.phase == 'playing':
@@ -627,15 +639,17 @@ class Game:
     async def send_gg(self):
         act = self.active()
         await self.send_to(act, {'t': 'gg', 'phase': self.phase, 'left': self.cd_left,
-                                 'ready': len(act), 'lv': {str(p.id): p.level for p in act}})
+                                 'ready': len(act), 'lv': {str(p.id): p.level for p in act},
+                                 'xv': sum(1 for p in act if p.vote_extreme), 'ex': 1 if self.extreme else 0})
 
-    async def set_ready(self, player):
+    async def set_ready(self, player, extreme=False):
         if player.ready or player.free:
             return
         if self.phase == 'ended':                 # a game just finished: wait for the reset
             await self.send_to([player], {'t': 'kick'})
             return
         player.ready = True
+        player.vote_extreme = extreme
         player.refill()
         player.level = 0
         if self.phase == 'playing':               # joining a running game: start at the lowest level in play
@@ -683,6 +697,9 @@ class Game:
             return
         self.phase = 'playing'
         self.cd_left = 0
+        votes = sum(1 for p in self.active() if p.vote_extreme)
+        self.extreme = votes * 2 > len(self.active())      # a strict majority wants EXTREME (a tie stays normal)
+        print(f'Extreme votes: {votes}/{len(self.active())} -> {"EXTREME" if self.extreme else "normal"}')
         for p in self.active():
             p.level = 0
             p.kind = CHARACTERS[0]
@@ -719,6 +736,17 @@ class Game:
         await self.send_to(self.active(), {'t': 'lvl', 'id': killer.id, 'level': killer.level,
                                            'kind': killer.kind, 'x': x, 'z': z})
 
+    async def demote(self, player):
+        """Died as Thanos: no respawn at the top. Back down the ladder: Mr. Potato Head, or SpongeBob in an EXTREME match."""
+        player.level = 0 if self.extreme else DROP_LEVEL
+        player.kind = CHARACTERS[player.level]
+        player.refill()
+        player.protect()
+        x, z = self.random_spawn(player)
+        print(f'{player.name} died as Thanos and dropped to {player.kind}')
+        await self.send_to(self.active(), {'t': 'lvl', 'id': player.id, 'level': player.level,
+                                           'kind': player.kind, 'x': x, 'z': z, 'dn': 1})
+
     async def win(self, player):
         self.phase = 'ended'
         print(f'{player.name} won')
@@ -736,6 +764,7 @@ class Game:
             if p.free:
                 continue                          # free play carries on whatever the gun game does
             p.ready = False
+            p.vote_extreme = False
             p.level = 0
             p.kind = 'spongebob'
             p.refill()
@@ -743,6 +772,7 @@ class Game:
                 p.web_task.cancel()
         self.phase = 'lobby'
         self.cd_left = 0
+        self.extreme = False
         await self.send_to(targets, {'t': 'kick'})
 
     # ---------------------------------------------------------- snapshots
