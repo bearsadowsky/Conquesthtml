@@ -101,8 +101,18 @@
   #board td.sel { color: #7887a5; font-size: .8em; }
   #gginfo { position: absolute; left: max(1vw, calc(50% - 86 * var(--u))); top: calc(9 * var(--u)); background: rgba(0,0,0,.5); padding: calc(.6 * var(--u)) calc(1.2 * var(--u)); font-size: calc(2.25 * var(--u)); white-space: pre; }
   #gginfo:empty { display: none; }
+  #extreme { display: none; position: absolute; left: 50%; top: calc(23.5 * var(--u)); transform: translateX(-50%); width: calc(40 * var(--u)); height: calc(6.4 * var(--u)); border: calc(.35 * var(--u)) solid #5b6a88; border-radius: calc(1 * var(--u)); font: inherit; font-size: calc(2.9 * var(--u)); font-weight: 800; letter-spacing: .12em; color: #96a5be; background: rgba(8, 15, 36, .85); cursor: pointer; z-index: 2; }
+  #extreme:hover { border-color: #9fb0cf; }
+  #extreme.on { color: #fff; border-color: #ff4a2a; background: #b8260f; box-shadow: 0 0 calc(2.4 * var(--u)) rgba(255, 74, 42, .75); }
+  #extreme.on:hover { background: #d4300f; }
+  #extremeNote { display: none; position: absolute; left: 0; right: 0; top: calc(30.4 * var(--u)); text-align: center; font-size: calc(1.7 * var(--u)); color: #96a5be; pointer-events: none; }
   #big { position: absolute; left: 0; right: 0; top: calc(40 * var(--u)); transform: translateY(-50%); text-align: center; font-size: calc(6.5 * var(--u)); font-weight: 800; line-height: 1.2; white-space: pre; text-shadow: 0 .3vh .9vh #000; }
   #big.win { color: #ff2a2a; font-size: calc(11 * var(--u)); }
+  #big.boss { color: #c58cff; font-size: calc(8 * var(--u)); text-shadow: 0 0 calc(2 * var(--u)) rgba(150, 80, 230, .9), 0 .3vh 0 #000; }
+  #tarrow { position: absolute; left: 0; top: 0; display: none; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+  #tarrow .tpt { width: 0; height: 0; margin: 0 auto; border-top: calc(2.2 * var(--u)) solid transparent; border-bottom: calc(2.2 * var(--u)) solid transparent; border-left: calc(4.2 * var(--u)) solid #c58cff; filter: drop-shadow(0 0 calc(.9 * var(--u)) #9650e6); animation: tpulse .8s ease-in-out infinite alternate; }
+  #tarrow .tlb { margin-top: calc(.6 * var(--u)); font-size: calc(2 * var(--u)); font-weight: 800; letter-spacing: .1em; color: #e3c8ff; white-space: nowrap; text-shadow: 0 0 calc(.8 * var(--u)) #9650e6, 0 1px 2px #000; }
+  @keyframes tpulse { from { opacity: .55; } to { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -112,6 +122,8 @@
   <div class="band" id="bandBottom"></div>
   <div class="ctr" id="title">CONQUEST</div>
   <div class="ctr" id="sub">GUN GAME  -  GET KILLS TO CLIMB, WIN WITH A THANOS KILL</div>
+  <button id="extreme">EXTREME: OFF</button>
+  <div id="extremeNote">Die as Thanos and you drop to Mr. Potato Head. EXTREME: all the way back to SpongeBob. In a public match the majority decides.</div>
   <div class="panel" id="left">
     <div class="ctr dim" id="lsel">SELECTED</div>
     <div class="ctr" id="hname"></div>
@@ -754,6 +766,23 @@ function buildHomerMesh(parent, sy = 1.0) {          // Homer Simpson: round yel
 const THANOS_SKIN = rgb(150, 100, 160), THANOS_SKIN_DK = rgb(112, 72, 124), THANOS_ARMOR = rgb(46, 52, 112), THANOS_GOLD = rgb(222, 178, 58), THANOS_GOLD_DK = rgb(176, 134, 36), THANOS_BOOT = rgb(38, 40, 82);
 const THANOS_GEMS = [rgb(70, 110, 255), rgb(255, 215, 60), rgb(255, 60, 60), rgb(150, 80, 230), rgb(70, 220, 90), rgb(255, 130, 40)];   // the six infinity stones (decoration only: he has no abilities yet)
 const THANOS_SPINE_Y = 0.7, THANOS_SCALE = 1.15, THANOS_LIFT = 0.45, THANOS_LEG = 1.15, THANOS_STAGE = 0.76;   // big final boss: long legs (the body is lifted by THANOS_LIFT to sit on them), and a smaller showcase on the home screen so he fits                             // Thanos is taller than everyone else (feet stay on the ground)
+/* ---- hit shapes: every character used to be one sphere (radius 0.95, 1 unit above the feet). That fits a normal body but not Thanos (about 3.7 tall, head about 3.2 up), so shots went under his head and through his chest. Thanos is now a stack of spheres that follow his real body. [height above feet, radius] ---- */
+const DEFAULT_HIT = [[1.0, 0.95]];
+const THANOS_HIT = [[3.15, 0.55], [2.35, 0.95], [1.65, 0.75], [1.0, 0.6], [0.4, 0.55]];   // head, chest + shoulders, waist, upper legs, lower legs
+const hitShape = v => v.kind === 'thanos' ? THANOS_HIT : DEFAULT_HIT;
+function hitDist(v, p) {                                   // distance from a point to the victim's body, on the same scale as the old "distance to the centre" tests (inside the body = under 0.95)
+  let best = 1e9;
+  for (const [hy, r] of hitShape(v)) best = Math.min(best, Math.hypot(p.x - v.x, p.y - (v.y + hy), p.z - v.z) - r + 0.95);
+  return best;
+}
+function hitRay(v, from, dir, lo, hi, R = 0.95) {          // the first distance along a ray (from lo to hi) where it passes within R of the victim's body, or -1
+  let best = -1;
+  for (const [hy, r] of hitShape(v)) {
+    const c = new V3(v.x, v.y + hy, v.z), tt = clamp(c.clone().sub(from).dot(dir), lo, hi);
+    if (c.distanceTo(from.clone().addScaledVector(dir, tt)) - r + 0.95 < R && (best < 0 || tt < best)) best = tt;
+  }
+  return best;
+}
 /* ---- Thanos: a fully jointed body (spine, neck, shoulders, elbows, hips, knees, ankles) and his uppercut ---- */
 /* Angles are in degrees, in the game's own convention: rx < 0 swings an arm / leg forward, ry > 0 turns to his right, rz < 0 swings his right arm out.
    Every joint is one number in a "pose" (THJ0 is the relaxed pose); the uppercut is a keyframed pose, walking / running / jumping / idling are generated poses. */
@@ -1749,7 +1778,7 @@ class SprayBubble {
     if (this.t > SPRAY_LIFE || p.y < height(p.x, p.z) + 0.1) { new ExplosionFx(p.clone(), 0.6, rgb(255, 170, 215), false); return false; }
     if (!this.visual) for (const v of allVictims()) {
       if (v === this.owner || !v.alive) continue;
-      if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < this.m.scale.x / 2 + 0.75) {
+      if (hitDist(v, p) < this.m.scale.x / 2 + 0.75) {
         const origin = new V3(p.x - this.vel.x, p.y, p.z - this.vel.z);
         if (NET) sendPunch(deliverHits([[v, SPRAY_DAMAGE]], origin, undefined, 'bubble'));
         else if (v instanceof Target) v.takeDamage(SPRAY_DAMAGE, origin, SPRAY_PUSH);
@@ -1788,7 +1817,7 @@ class StrawShot {         // a red Kool-Aid pellet: flies straight until it has 
       p.addScaledVector(this.vel, h);
       if (!this.visual) for (const v of allVictims()) {
         if (v === this.owner || !v.alive) continue;
-        if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 0.95) {
+        if (hitDist(v, p) < 0.95) {
           if (NET) sendPunch(deliverHits([[v, STRAW_DAMAGE]], before, STRAW_PUSH, 'straw'));
           else if (v instanceof Target) v.takeDamage(STRAW_DAMAGE, before, STRAW_PUSH);
           new ExplosionFx(p.clone(), 0.5, rgb(230, 40, 55), false);
@@ -1831,8 +1860,8 @@ class RepulsorBolt {       // a streak of white-blue light that crosses its whol
     let stop = move, victim = null;
     if (!this.visual) for (const v of allVictims()) {
       if (v === this.owner || !v.alive) continue;
-      const c = new V3(v.x, v.y + 1.0, v.z), tt = clamp(c.clone().sub(from).dot(this.dir), 0, stop);
-      if (c.distanceTo(from.clone().addScaledVector(this.dir, tt)) < 0.95) { stop = tt; victim = v; }   // a true direct hit: the same tight hitbox as the pistol, whatever the beam looks like
+      const tt = hitRay(v, from, this.dir, 0, stop);
+      if (tt >= 0) { stop = tt; victim = v; }   // a true direct hit: the same tight hitbox as the pistol, whatever the beam looks like
     }
     for (let t = 0.5; t < stop; t += 1.0) {            // the ground stops it
       const q = from.clone().addScaledVector(this.dir, t);
@@ -1867,7 +1896,7 @@ class WebShot {
     }
     if (!this.visual) for (const v of allVictims()) {      // the web sticks to whoever it hits and electrifies them
       if (v === this.owner || !v.alive) continue;
-      if (new V3(v.x, v.y + 1.0, v.z).distanceTo(p) < 1.15 * 1.7) {
+      if (hitDist(v, p) < 1.15 * 1.7) {
         if (v instanceof Target) {
           if (NET) NET.send({ t: 'fx', k: 'webt', i: v.index });
           makeWeb(v, WEB_TIME, true);
@@ -1986,7 +2015,7 @@ function damageAll(pos, direct) {           // burger explosion: splash falls of
   const hits = [];
   for (const v of allVictims()) {
     if (!v.alive) continue;
-    const d = new V3(v.x, v.y + 1.0, v.z).distanceTo(pos);
+    const d = hitDist(v, pos);
     if (v === me && d < SPLASH_RADIUS) { me.vy = Math.max(me.vy, 9 * (1 - 0.6 * d / SPLASH_RADIUS)); me.grounded = false; }
     if (v === direct) hits.push([v, DIRECT_DAMAGE]);
     else if (d < SPLASH_RADIUS) hits.push([v, SPLASH_DAMAGE * (1 - 0.4 * d / SPLASH_RADIUS)]);
@@ -2550,6 +2579,20 @@ function buildGiantDonut(parent, pos) {                     // a big, radioactiv
   g.visible = false;
   return g;
 }
+function buildHomerGiantParts(o, sy) {                     // everything the giant donut needs to be SEEN: built for Homer himself and for his copy on everyone else's screen
+  o.tint = []; o.body.traverse(m => { if (m.isMesh && !m.material.transparent) o.tint.push({ m, orig: m.material }); });   // his own body parts (for the green tint)
+  o.giant = buildGiantDonut(o.spin, [0, sy + 1.25, -0.55]); o.mouth = G(o.model_root, [0, sy + 0.5, 0.45]);   // (the donut hangs off his body, not his model, so he can lean into it)
+  o.eat_t = null; o.eat_bite = 0; o.pwr = null; o.big = 1;
+  o.eyes_d = G(o.model_root);                              // donut eyes (shown after the power-up)
+  for (const sx of [-1, 1]) {                              // the same fat pink-frosted donut as the ones he throws (default colours and proportions), side by side as eyes, with a dark pupil showing through each hole
+    const de = buildDonut(o.eyes_d, [sx * 0.19, sy + 1.0, 0.4], 0.55); de.rx = 90;
+    part(o.eyes_d, 'sphere', [sx * 0.19, sy + 1.0, 0.35], 0.07, rgb(25, 18, 30));
+  }
+  o.eyes_d.visible = false;
+  o.aura = G(o.spin, [0, sy + 0.3, 0]); o.aura.shells = [];   // a green glow around his whole body
+  for (const [sc, op] of [[[2.1, 3.7, 1.8], 0.035], [[1.75, 3.15, 1.5], 0.045], [[1.4, 2.6, 1.2], 0.055]]) { const sh = new THREE.Mesh(GEO_S, glassMat(rgb(80, 255, 70), op)); sh.scale.set(sc[0], sc[1], sc[2]); o.aura.add(sh); o.aura.shells.push(sh); }
+  o.aura.visible = false;
+}
 const EAT = { reach: 0.7, pop: 1.0, swing: 2.0, pause: 2.4, bites: 4, per: 1.3, slices: 5, end: 0.6 };   // the eating script (seconds): reach behind his head, pull the donut out, swing it round, pause, then 4 slow bites
 function updateHomerEat(o, dt) {          // reach behind his head with both hands, pull out the giant donut, swing it in front of him, then eat it one slow bite at a time. Nothing happens when he's done.
   o.eat_t += dt;
@@ -2558,7 +2601,7 @@ function updateHomerEat(o, dt) {          // reach behind his head with both han
   if (t >= TF) {
     o.eat_t = null; g.visible = false; mr.position.z = 0;
     for (const a of [o.left_arm, o.right_arm]) a.rz = 0;
-    homerBeginPower(o);                                                                                                  // ...and now the donut kicks in
+    if (o.pid === undefined) homerBeginPower(o);                                                                         // ...and now the donut kicks in (on someone else's screen the state message starts it)
     return;
   }
   let arm, fore, rz, sc = 1, py = sy + 1.25, pz = -0.55, lunge = 0, lift = 0, raise = 0, turn = 0;
@@ -2613,20 +2656,22 @@ function homerBeginPower(o) {                                // the donut kicks 
   o.weapons = ['choke']; setWeapon(o, 'choke', true);   // giant form: just the choke (no bonk); the roll will be added here later
 }
 function homerEndPower(o, died) {
-  if (o.pwr) o.gd_cd = GDONUT_COOLDOWN;   // the giant donut's cooldown only starts now that the giant form is over
-  crossEl.style.display = '';   // crosshair back
+  const mine = o.pid === undefined;                         // false for Homer as seen on someone else's screen: no cooldown, crosshair, weapons or choke to touch
+  if (mine && o.pwr) o.gd_cd = GDONUT_COOLDOWN;   // the giant donut's cooldown only starts now that the giant form is over
+  if (mine) crossEl.style.display = '';   // crosshair back
   // back to normal size, colour, eyes and abilities (power ran out, or he died and respawned)
-  homerReleaseChoke(o);
+  if (mine) homerReleaseChoke(o);
   o.pwr = null; o.big = 1; o.body.scale.setScalar(1); o.body.position.y = feetLift('homer');
   applyHomerTint(o, 0); o.eyes_d.visible = false; o.aura.visible = false; o.model_root.eyes.forEach(m => m.visible = true);
-  o.model_root.position.x = 0;
+  o.model_root.position.x = 0; o.model_root.rz = 0;
+  if (!mine) return;
   o.weapons = WEAPONS.homer; if (!o.weapons.includes(o.weapon)) setWeapon(o, 'fist', true);   // the choke goes away with the giant form
   if (died) { o.max_hp = 100; o.hp = 100; o.bar.set(1); }    // a fresh life: normal health
 }
 function updateHomerPower(o, dt) {
   const P = o.pwr; if (!P) return;
   P.t += dt;
-  crossEl.style.display = P.t >= HP.shake ? 'none' : '';   // no crosshair while giant (from the pop until he has shrunk back)
+  if (o.pid === undefined) crossEl.style.display = P.t >= HP.shake ? 'none' : '';   // no crosshair while giant (from the pop until he has shrunk back)
   const t = P.t, mr = o.model_root, GREEN = rgb(110, 255, 80), e = u => u * u * (3 - 2 * u);
   const T1 = HP.shake, T2 = T1 + HP.grow, T3 = T2 + HP.hold, T4 = T3 + HP.shrink;
   if (t >= T4) { homerEndPower(o, false); return; }
@@ -2638,16 +2683,17 @@ function updateHomerPower(o, dt) {
     if (Math.random() < dt * (3 + 28 * u)) spark(1, 0.35 + 0.35 * u);
   } else if (t < T2) {                                       // POP: he grows to three times his size (with a little overshoot) and his health bar becomes 5x as big
     const u = (t - T1) / HP.grow, c1 = 1.70158, c3 = c1 + 1, eb = 1 + c3 * (u - 1) ** 3 + c1 * (u - 1) ** 2;
-    if (!P.burst) { P.burst = true; spark(10, 0.9); o.eyes_d.visible = true; mr.eyes.forEach(m => m.visible = false); homerScaleHealth(o, 100 * HP.health); }   // the donut eyes light up as he starts to grow
+    if (!P.burst) { P.burst = true; spark(10, 0.9); o.eyes_d.visible = true; mr.eyes.forEach(m => m.visible = false); if (o.pid === undefined) homerScaleHealth(o, 100 * HP.health); }   // the donut eyes light up as he starts to grow
     A = 0.28 * (1 - u); big = 1 + (HP.size - 1) * eb; f = HP.tint; aura = 1;
     if (Math.random() < dt * 20) spark(1, 0.8);
   } else if (t < T3) {                                       // big, green and glowing
     A = 0; big = HP.size; f = HP.tint; aura = 1;
+    if (!P.burst) { P.burst = true; o.eyes_d.visible = true; mr.eyes.forEach(m => m.visible = false); }   // (joined late: the eyes are already donuts)
     if (Math.random() < dt * 4) spark(1, 0.6);
   } else {                                                   // time's up: he shrinks back down, the glow fades, the health goes back to a normal bar (same fraction)
     const u = (t - T3) / HP.shrink;
     if (o.chk) homerReleaseChoke(o);                         // anyone he is holding is dropped
-    if (!P.shrunk) { P.shrunk = true; spark(8, 0.8); homerScaleHealth(o, 100); }
+    if (!P.shrunk) { P.shrunk = true; spark(8, 0.8); if (o.pid === undefined) homerScaleHealth(o, 100); }
     if (u >= 0.5 && o.eyes_d.visible) { o.eyes_d.visible = false; mr.eyes.forEach(m => m.visible = true); }
     A = 0.1 * (1 - u); big = 1 + (HP.size - 1) * (1 - e(u)); f = HP.tint * (1 - u); aura = 1 - u;
   }
@@ -2712,6 +2758,7 @@ function updateHomerChoke(o, dt) {
         best.held = { y: best.y }; best.choked = { by: o }; best.choke_press = 0;
         if (NET && best.pid !== undefined) NET.send({ t: 'choke', id: best.pid, on: 1 });   // a real player: tell their game they are being choked
         new ExplosionFx(new V3(best.x, best.y + 1.2, best.z), 0.9 * B, rgb(120, 255, 80), false);
+        if (NET) NET.send({ t: 'fx', k: 'cgrab', p: [r2(best.x), r2(best.y + 1.2), r2(best.z)] });
       }
     }
     if (c.phase === 'reach' && t >= CHOKE.reach) { enter('miss'); new ExplosionFx(new V3(c.hit_at.x, c.hit_at.y + 0.3, c.hit_at.z), 0.7 * B, rgb(235, 235, 235), false); }   // grabbed nothing but air
@@ -2734,6 +2781,7 @@ function updateHomerChoke(o, dt) {
       else if (c.win || (v.pid !== undefined && CHOKE.windows.some(([a, b]) => t >= a - 0.1 && t <= b + 0.2))) {   // perfect timing (online: a little slack for lag): free, and Homer is stunned
         chokeFree(v); if (v.pid === undefined) { v.x += f.x * 1.2 * B; v.z += f.z * 1.2 * B; }
         new ExplosionFx(new V3(o.x + f.x * 0.8 * B, o.y + 1.6 * B, o.z + f.z * 0.8 * B), 1.2 * B, rgb(255, 235, 90), false);
+        if (NET) NET.send({ t: 'fx', k: 'cfree', p: [r2(o.x + f.x * 0.8 * B), r2(o.y + 1.6 * B), r2(o.z + f.z * 0.8 * B)] });
         enter('stun'); return;
       } else {                                                                 // bad timing: he squeezes harder, and they can't try again for half a second
         c.lock = CHOKE.lock; sendPunch(deliverHits([[v, v.max_hp * CHOKE.penalty]], origin, 0.001, 'choke'));
@@ -2841,7 +2889,7 @@ class RocketArm {
     new ExplosionFx(pos, ROCKET_BLAST * 0.9, rgb(255, 150, 40));
     for (const v of allVictims()) {
       if (v === o || !v.alive) continue;
-      const d = new V3(v.x, v.y + 1.0, v.z).distanceTo(pos);
+      const d = hitDist(v, pos);
       if (v === direct) hits.push([v, ROCKET_DAMAGE]);
       else if (d < ROCKET_BLAST) hits.push([v, ROCKET_SPLASH]);
     }
@@ -3144,7 +3192,7 @@ function updateLaunch(o, dt) {             // thrown forward: covers 2/3 of the 
   const hits = [];
   for (const v of [...remotes.values(), ...targets]) {
     if (!v.alive || w.hit.has(v)) continue;
-    if (new V3(v.x, v.y + 1.0, v.z).distanceTo(centre) < 1.9) {
+    if (hitDist(v, centre) < 1.9) {
       w.hit.add(v);
       hits.push([v, WEBLAUNCH_DAMAGE]);
       new ExplosionFx(centre.clone().addScaledVector(w.dir, 0.8), 0.9, rgb(255, 110, 100), false);
@@ -3309,8 +3357,8 @@ class PowerBeam {                                            // a slow beam of p
     let stop = step, victim = null;
     if (!this.visual) for (const v of allVictims()) {
       if (v === this.owner || !v.alive) continue;
-      const c = new V3(v.x, v.y + 1.0, v.z), tt = clamp(c.clone().sub(from).dot(this.dir), 0, stop);
-      if (c.distanceTo(from.clone().addScaledVector(this.dir, tt)) < POWER_HIT_R) { stop = tt; victim = v; }
+      const tt = hitRay(v, from, this.dir, 0, stop, POWER_HIT_R);
+      if (tt >= 0) { stop = tt; victim = v; }
     }
     const to = from.clone().addScaledVector(this.dir, stop);
     this.p.copy(to); this.dist += stop;
@@ -3755,8 +3803,8 @@ class RealityBeam {                                          // a red beam that 
     let stop = step, victim = null;
     if (!this.visual) for (const v of allVictims()) {
       if (v === this.owner || !v.alive || v.duck_t > 0) continue;       // (it flies through a duck)
-      const c = new V3(v.x, v.y + 1.0, v.z), tt = clamp(c.clone().sub(from).dot(this.dir), 0, stop);
-      if (c.distanceTo(from.clone().addScaledVector(this.dir, tt)) < hitR) { stop = tt; victim = v; }
+      const tt = hitRay(v, from, this.dir, 0, stop, hitR);
+      if (tt >= 0) { stop = tt; victim = v; }
     }
     const to = from.clone().addScaledVector(this.dir, stop);
     this.p.copy(to); this.dist += stop;
@@ -4105,22 +4153,12 @@ function makePlayer(kind) {
     o.straw = buildStraw(o.model_root, sy);
     Object.assign(o, { slam: null, slam_cd: BFU.slam, straw_cd: 0, burst: null });
   } else if (kind === 'homer') {
-    o.tint = []; o.body.traverse(m => { if (m.isMesh && !m.material.transparent) o.tint.push({ m, orig: m.material }); });   // his own body parts (for the green tint)
+    buildHomerGiantParts(o, sy);                              // the giant donut, green tint list, donut eyes and aura (shared with what other players see)
     o.donut_props = { R: buildDonut(o.right_fore, [0, -0.4, 0.28], 0.85), L: buildDonut(o.left_fore, [0, -0.4, 0.28], 0.85) };   // one in each hand, face forward
     for (const h of ['R', 'L']) { o.donut_props[h].rx = 90; o.donut_props[h].visible = false; }
     Object.assign(o, { dn: { R: { ready: true, proj: null }, L: { ready: true, proj: null } }, throw_hand: 'R', eat_t: null, eat_bite: 0, eat_fx: 0, gd_cd: BFU.gdonut });
-    o.giant = buildGiantDonut(o.spin, [0, sy + 1.25, -0.55]); o.mouth = G(o.model_root, [0, sy + 0.5, 0.45]);   // (the donut hangs off his body, not his model, so he can lean into it)
     o.pwr = null; o.big = 1;
     o.hands = [G(o.left_fore, [0, -0.34, 0]), G(o.right_fore, [0, -0.34, 0])];   // where his hands are (for the choke's grab)
-    o.eyes_d = G(o.model_root);                              // donut eyes (shown after the power-up)
-    for (const sx of [-1, 1]) {                              // the same fat pink-frosted donut as the ones he throws (default colours and proportions), side by side as eyes, with a dark pupil showing through each hole
-      const de = buildDonut(o.eyes_d, [sx * 0.19, sy + 1.0, 0.4], 0.55); de.rx = 90;
-      part(o.eyes_d, 'sphere', [sx * 0.19, sy + 1.0, 0.35], 0.07, rgb(25, 18, 30));
-    }
-    o.eyes_d.visible = false;
-    o.aura = G(o.spin, [0, sy + 0.3, 0]); o.aura.shells = [];   // a green glow around his whole body
-    for (const [sc, op] of [[[2.1, 3.7, 1.8], 0.035], [[1.75, 3.15, 1.5], 0.045], [[1.4, 2.6, 1.2], 0.055]]) { const sh = new THREE.Mesh(GEO_S, glassMat(rgb(80, 255, 70), op)); sh.scale.set(sc[0], sc[1], sc[2]); o.aura.add(sh); o.aura.shells.push(sh); }
-    o.aura.visible = false;
   } else if (kind === 'potato') {
     Object.assign(o, { rkt: null, rk_cd: 0, roll: null, roll_cd: BFU.roll, roll_spin: 0, roll_on: false });   // (the barrel roll can't be used for the first 15 s after you become him)
   } else if (kind === 'warden') {
@@ -4337,9 +4375,8 @@ function firePistol(o) {
   let best = null, hit = PISTOL_RANGE;
   for (const v of [...remotes.values(), ...targets]) {   // hitscan: closest target along the crosshair line
     if (!v.alive) continue;
-    const c = new V3(v.x, v.y + 1.0, v.z), tt = c.clone().sub(origin).dot(d);
-    if (tt < 1.0 || tt >= hit) continue;
-    if (c.distanceTo(origin.clone().addScaledVector(d, tt)) < 0.95) { best = v; hit = tt; }
+    const tt = hitRay(v, origin, d, 1.0, hit);
+    if (tt >= 0 && tt < hit) { best = v; hit = tt; }
   }
   const limit = hit;
   for (let t = 2.0; t < limit; t += 1.0) {    // terrain blocks the shot
@@ -4826,6 +4863,7 @@ function updatePlayer(o, dt) {
       if (o.wl) msg.wl = { set: 1, tension: 2, fly: 3 }[o.wl.stage];
       if (o.chk && o.chk.last) msg.ck = o.chk.last.map(r1);   // Homer's choke pose (lean, arm, forearm, arm spread): everyone else animates it
       if (o.kind === 'homer' && o.max_hp > 100) msg.bg = 1;                      // Homer's giant form (5x health): the server tracks it too
+      if (o.kind === 'homer') { if (o.eat_t !== null) msg.ea = r2(o.eat_t); if (o.pwr) msg.pw = r2(o.pwr.t); }   // where he is in eating the giant donut / in the power-up: everyone else plays the same animation
       const dg = o.dog;
       if (dg && dg.alive) msg.dg = [r1(dg.x), r1(dg.z), Math.round(dg.ry)];
       NET.send(msg);
@@ -5107,6 +5145,7 @@ class RemotePlayer {
     this.left_arm = rig.left_arm; this.right_arm = rig.right_arm;
     this.left_fore = rig.left_fore || null; this.right_fore = rig.right_fore || null;
     this.left_leg = rig.left_leg; this.right_leg = rig.right_leg;
+    if (kind === 'homer') buildHomerGiantParts(this, sy);        // so everyone sees the giant donut, the shaking, the green glow and the growth
     if (kind === 'spongebob') {
       this.gun = buildGun(this.model_root, sy, rig.skin); this.bubbler = buildBubbler(this.model_root, sy);
       this.hold_arms = buildHoldArms(this.model_root, sy, rig.skin);
@@ -5188,9 +5227,22 @@ class RemotePlayer {
     this.setGhost(!!extra.gh, !extra.sp);
     this.setSkel(!!extra.sk && !extra.gh);
     this.ck = Array.isArray(extra.ck) && extra.ck.length === 4 ? extra.ck : null;
-    if (this.kind === 'homer') {                            // giant form: show him at 3x size
-      const bg = extra.bg ? 3 : 1;
-      if (bg !== (this.big || 1)) { this.big = bg; this.body.scale.setScalar(bg); this.body.position.y = feetLift('homer') * bg; }
+    if (this.kind === 'homer') {                            // the giant donut, as everyone else sees it: eat it, shake, grow, glow green, shrink (the same animations Homer plays; they follow his clock)
+      const ea = typeof extra.ea === 'number' ? extra.ea : null, pw = typeof extra.pw === 'number' ? extra.pw : null;
+      if (ea !== null) {
+        if (this.eat_t === null) { if (ea < EAT.pause + EAT.bites * EAT.per) { this.eat_t = ea; this.eat_bite = 0; this.giant.segs.forEach(sg => sg.visible = true); this.giant.halos.forEach(g => g.visible = true); } }
+        else if (Math.abs(this.eat_t - ea) > 0.35) this.eat_t = ea;
+      } else if (this.eat_t !== null) {                     // he was hit / switched away / died: the eating just stops
+        this.eat_t = null; this.giant.visible = false; this.left_arm.rz = this.right_arm.rz = 0; this.model_root.position.z = 0;
+      }
+      if (pw !== null) {
+        if (!this.pwr) { this.pwr = { t: pw, f: 0, burst: false, shrunk: false }; if (this.eat_t !== null) { this.eat_t = null; this.giant.visible = false; this.left_arm.rz = this.right_arm.rz = 0; this.model_root.position.z = 0; } }
+        else if (Math.abs(this.pwr.t - pw) > 0.35) this.pwr.t = pw;
+      } else if (this.pwr) homerEndPower(this, false);      // the giant form is over (or he died): normal size, colour and eyes again
+      if (pw === null && !this.pwr) {                        // (an older client that only says "giant": just show him big)
+        const bg = extra.bg ? 3 : 1;
+        if (bg !== (this.big || 1)) { this.big = bg; this.body.scale.setScalar(bg); this.body.position.y = feetLift('homer') * bg; }
+      }
     }
     if (this.kind === 'potato') { const rs = { 1: 'jump', 2: 'roll', 3: 'up' }[extra.rl] || null; if (rs !== (this.roll ? this.roll.stage : null)) this.roll = rs ? { stage: rs, t: 0 } : null; }
     const stage = { 1: 'set', 2: 'tension', 3: 'fly' }[extra.wl] || null;
@@ -5410,6 +5462,10 @@ class RemotePlayer {
       if (this.wp === 'gun') this.gun.position.z = 0.5 - this.recoil;
     }
     if (kool && this.wp === 'straw') poseStraw(this.straw, this.pitch);
+    if (this.kind === 'homer') {                                      // the giant donut: eating it, then the shaking, growing and green glow
+      if (this.eat_t !== null) updateHomerEat(this, dt);
+      updateHomerPower(this, dt);
+    }
     if (this.kind === 'homer') {                                      // Homer's choke, seen from outside: bend right over, arms down, then straighten up squeezing
       const kc = Math.min(1, 30 * dt);
       if (this.ck) {
@@ -5540,6 +5596,8 @@ function handleFx(m) {                                         // another player
     else if (k === 'tduck') { const t = targets.find(x => x.index === m.i); if (t) applyDuck(t, REALITY_DUCK); }
     else if (k === 'treal') { new RealityBeam(vec(m.p), vec(m.v), null, true); if (r) { r.rea_charge = null; r.pow_arm = 0.6; r.pow_rec = 1; } new ExplosionFx(vec(m.p), 0.55, rgb(255, 70, 70), false); }
     else if (k === 'ttime' && r) new TimeMist(() => r.root.position, TIME_MIST_DUR);   // Thanos's Time Stone: everyone sees the green mist round him
+    else if (k === 'cgrab') new ExplosionFx(vec(m.p), 0.9 * ((r && r.big) || 1), rgb(120, 255, 80), false);      // Homer caught someone
+    else if (k === 'cfree') new ExplosionFx(vec(m.p), 1.2 * ((r && r.big) || 1), rgb(255, 235, 90), false);       // ...and they broke free
     else if (k === 'point' && r) r.point_t = 0;
     else if (k === 'med' && r) r.med_t = 0;
     else if (k === 'whistle' && r) { r.whistle_t = 0; r.whistle_blown = false; }
@@ -5631,7 +5689,8 @@ function pumpNet() { for (const m of NET.inbox.splice(0)) handleNet(m); }
 
 /* ---- gun game: the server runs the ladder, the lobby countdown and the win ---- */
 const GUN_ORDER = ['spongebob', 'jack', 'wick', 'homer', 'spiderman', 'koolaid', 'ironman', 'potato', 'warden', 'thanos'];          // spongebob, jack, wick, homer, spiderman, koolaid, ironman, potato (Mr. Potato Head), warden (Vader), thanos (last: a kill with him wins)
-const gg = { phase: 'off', level: 0 };
+const gg = { phase: 'off', level: 0, extreme: false };
+let extremeVote = false;                              // the EXTREME switch on the menu: sent with Play, the majority of the match decides
 const ggLevels = new Map();
 const bigEl = document.getElementById('big'), ggInfoEl = document.getElementById('gginfo');
 let bigTimer = 0;
@@ -5645,7 +5704,8 @@ function ggHud() {
   if (freeMode) { ggInfoEl.textContent = `FREE PLAY   ${CHAR_INFO[me ? me.kind : selected].name}\n[ and ] switch character   -   Hold Tab: leaderboard`; return; }
   const last = GUN_ORDER.length - 1, lv = gg.level;
   ggInfoEl.textContent = `GUN GAME   Level ${lv + 1}/${last + 1}: ${CHAR_INFO[GUN_ORDER[lv]].name}\n`
-    + (lv < last ? `Next: ${CHAR_INFO[GUN_ORDER[lv + 1]].name}` : 'Get a kill to WIN!');
+    + (lv < last ? `Next: ${CHAR_INFO[GUN_ORDER[lv + 1]].name}` : `Get a kill to WIN!   (die and you drop to ${CHAR_INFO[gg.extreme ? GUN_ORDER[0] : 'potato'].name})`)
+    + (gg.extreme ? '\nEXTREME MODE' : '');
 }
 function switchCharacter(kind, tx, tz) {            // become another character: full health, optionally somewhere else
   if (!me || !CHAR_INFO[kind]) return;
@@ -5673,23 +5733,29 @@ function ggState(m) {
   ggLevels.clear();
   for (const k in (m.lv || {})) ggLevels.set(parseInt(k, 10), m.lv[k]);
   const prev = gg.phase;
-  gg.phase = m.phase;
+  gg.phase = m.phase; gg.extreme = !!m.ex;
   if (!me) return;
   const lv = ggLevels.get(NET.my_id);
   if (lv !== undefined) { gg.level = lv; if (GUN_ORDER[lv] !== me.kind) switchCharacter(GUN_ORDER[lv]); }
   if (m.phase === 'lobby') setBig('Waiting for another player...\nHold H to go back to the menu');
-  else if (m.phase === 'countdown') setBig(`Game starts in ${m.left}`);
+  else if (m.phase === 'countdown') setBig(`Game starts in ${m.left}` + (m.xv ? `\nExtreme votes: ${m.xv}/${m.ready}` : ''));
   else if (m.phase === 'playing') {
-    if (prev === 'countdown') setBig('GO!', '', 1.2); else { setBig(''); showMsg('Game in progress - catch up!', 2.5); }
+    if (prev === 'countdown') setBig(gg.extreme ? 'GO!\nEXTREME MODE' : 'GO!', '', 1.5); else { setBig(''); showMsg('Game in progress - catch up!' + (gg.extreme ? '  (EXTREME MODE)' : ''), 2.5); }
   }
   ggHud();
 }
 function ggLevel(m) {                                // someone got a kill and moved up
   ggLevels.set(m.id, m.level);
+  if (me && m.id !== NET.my_id) {                    // everyone else hears about Thanos
+    const nm = String((remotes.get(m.id) || {}).name || netRoster.get(m.id) || 'Someone');
+    if (m.kind === 'thanos') setBig(`${nm.toUpperCase()} IS THANOS!`, 'boss', 3.5);
+    else if (m.dn) setBig('THANOS HAS FALLEN!', 'boss', 3);
+  }
   if (!me || m.id !== NET.my_id) return;
   gg.level = m.level;
   switchCharacter(m.kind, m.x, m.z);
-  showMsg(`LEVEL UP!  You are now ${CHAR_INFO[m.kind].name}`, 2.5);
+  if (m.dn) showMsg(`YOU DIED AS THANOS!  Back down to ${CHAR_INFO[m.kind].name}`, 3);      // no respawn at the top: down the ladder
+  else showMsg(`LEVEL UP!  You are now ${CHAR_INFO[m.kind].name}`, 2.5);
   ggHud();
 }
 function ggWin(m) {                                  // a kill with Vader: show it in red until everyone is kicked
@@ -5725,7 +5791,7 @@ function startGame(free = false) {
     } else {
       gg.phase = 'lobby'; gg.level = 0; ggHud();
       setBig('Waiting for another player...\nHold H to go back to the menu');
-      NET.send({ t: 'ready' });                       // I clicked Play
+      NET.send({ t: 'ready', ex: extremeVote ? 1 : 0 });   // I clicked Play (and whether I want EXTREME)
     }
   } else {
     for (let i = 0; i < 8; i++) {                     // eight target dummies in a ring around the spawn
@@ -5761,10 +5827,13 @@ function returnToMenu() {
   menuGroup.visible = true;
   selectCharacter(selected);
 }
+const extremeBtn = document.getElementById('extreme');
+extremeBtn.addEventListener('click', () => { extremeVote = !extremeVote; extremeBtn.classList.toggle('on', extremeVote); extremeBtn.textContent = extremeVote ? 'EXTREME: ON' : 'EXTREME: OFF'; });
 document.getElementById('play').addEventListener('click', () => startGame());
 document.getElementById('free').addEventListener('click', () => startGame(true));
 if (NET) {
   document.getElementById('right').classList.add('online');
+  extremeBtn.style.display = 'block'; document.getElementById('extremeNote').style.display = 'block';   // the extreme switch only matters online
   document.getElementById('rsub').textContent = 'Online as ' + NET.name;
   document.getElementById('renter').textContent = 'ENTER: gun game   -   F: free play (any character)';
 }
@@ -5776,6 +5845,32 @@ document.fonts?.ready.then(() => { fitTiles(); fitHero(); });
    MAIN LOOP
    ===================================================================== */
 const clock = new THREE.Clock();
+/* ---- Thanos on the map: an arrow at the edge of the screen points at him while he is out of sight ---- */
+const tArrowEl = document.createElement('div'); tArrowEl.id = 'tarrow'; tArrowEl.innerHTML = '<div class="tpt"></div><div class="tlb"></div>';
+document.getElementById('hud').appendChild(tArrowEl);
+const tArrowPt = tArrowEl.firstChild, tArrowLb = tArrowEl.lastChild, tArrowV = new V3();
+function updateThanosArrow() {
+  let target = null, bd = 1e9;
+  if (NET && me && mode === 'play') for (const r of remotes.values()) {
+    if (r.kind !== 'thanos' || !r.alive || r.ghost) continue;
+    const d = Math.hypot(r.x - me.x, r.z - me.z);
+    if (d < bd) { bd = d; target = r; }
+  }
+  if (!target) { tArrowEl.style.display = 'none'; return; }
+  const p = tArrowV.set(target.x, target.y + 2.4, target.z).applyMatrix4(camera.matrixWorldInverse);   // where he is relative to the camera
+  const th = Math.tan(camera.fov * D2R / 2);
+  let dx, dy;
+  if (p.z < 0) {                                                        // in front of us
+    dx = p.x / -p.z / (th * camera.aspect); dy = p.y / -p.z / th;
+    if (Math.abs(dx) < 0.9 && Math.abs(dy) < 0.86) { tArrowEl.style.display = 'none'; return; }   // on screen: no arrow needed
+  } else { dx = -p.x; dy = -p.y; }                                      // behind us: point the way round
+  const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+  const k = Math.min(0.84 / Math.max(Math.abs(dx), 1e-4), 0.76 / Math.max(Math.abs(dy), 1e-4));    // slide out to the edge of the screen
+  const W = innerWidth, H = innerHeight, x = W / 2 + dx * k * W / 2, y = H / 2 - dy * k * H / 2;
+  tArrowEl.style.display = 'block'; tArrowEl.style.left = x + 'px'; tArrowEl.style.top = y + 'px';
+  tArrowPt.style.transform = `rotate(${Math.atan2(y - H / 2, x - W / 2)}rad)`;
+  tArrowLb.textContent = `THANOS  ${Math.round(bd)}m`;
+}
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, clock.getDelta());
@@ -5787,6 +5882,7 @@ function frame() {
   updateEffects(dt);
   sunSpin.rotation.z += dt * 0.15; sunSpin.scale.setScalar(1 + 0.025 * Math.sin(clock.elapsedTime * 2));
   renderer.render(scene, camera);
+  updateThanosArrow();
 }
 frame();
 </script>
